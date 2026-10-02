@@ -1,0 +1,63 @@
+{
+  "network": "arbitrum-sepolia",
+  "chainId": 421614,
+  "deployer": "0x4526144B69a6380818B8b118E4F383e0523E1B28",
+  "compiler": {
+    "solc": "0.8.28",
+    "evmVersion": "cancun",
+    "optimizerRuns": 200
+  },
+  "contracts": {
+    "BursarFactory": {
+      "address": "0x8e6F4173742401009462712A5B898d10aEe402Dc",
+      "arbiscan": "https://sepolia.arbiscan.io/address/0x8e6F4173742401009462712A5B898d10aEe402Dc",
+      "deployTx": "0xd6f1dfb4b7507518b7e72bbd846781560fb403faf21e99de97987f96dc6d2a18",
+      "block": 315124586,
+      "verified": true
+    },
+    "MockUSDG": {
+      "address": "0xF7a631d39aFE37290A500Edcae7C64aA19Ed8524",
+      "arbiscan": "https://sepolia.arbiscan.io/address/0xF7a631d39aFE37290A500Edcae7C64aA19Ed8524",
+      "deployTx": "0x96ccee91e818920880d6b7c68a6a5a9fa3ba576c8986b42742eae41cdc3eaeee",
+      "block": 315124596,
+      "verified": true,
+      "decimals": 6,
+      "note": "testnet mock, public mint"
+    },
+    "BursarVault": {
+      "address": "0x3bb637f613473ed4e4801220e4F7292e6b1949B6",
+      "arbiscan": "https://sepolia.arbiscan.io/address/0x3bb637f613473ed4e4801220e4F7292e6b1949B6",
+      "deployTx": "0xf77710e1283154b7a8a925dae3f1dfe11b992d1bb26cb51f90a3ea5c58f5fee8",
+      "block": 315126986,
+      "verified": true,
+      "owner": "0x4526144B69a6380818B8b118E4F383e0523E1B28",
+      "createdBy": "BursarFactory.createVault"
+    }
+  },
+  "demo": {
+    "agent": {
+      "address": "0x2ADbae68aA757811b3c4f29CE55873Fe5A800E07",
+      "arbiscan": "https://sepolia.arbiscan.io/address/0x2ADbae68aA757811b3c4f29CE55873Fe5A800E07",
+      "policy": {
+        "perTxCap": "100000000",
+        "dailyCap": "500000000",
+        "approvalThreshold": "50000000",
+        "active": true,
+        "role": "DEMO"
+      }
+    },
+    "recipient": {
+      "address": "0xE5843118b8E82Fa58fe2d022128a55527C3a5f1B",
+      "allowlistedForAgent": true
+    },
+    "task": {
+      "label": "demo-task-1",
+      "taskId": "0x2db36bc1effc8eeecdfa0b6cbad4be7d0b2fb08ed8f8b0cbd215b0e3641aade2",
+      "budget": "1000000000",
+      "expiry": 1791585122,
+      "openTx": "0x796ad66fae4ee8620c71eb91635ad6deb6b65d8760b7146d3b15d0ad6441201b"
+    },
+    "vaultDeposit": "10000000000",
+    "amountUnits": "token base units (6 decimals)"
+  }
+}
