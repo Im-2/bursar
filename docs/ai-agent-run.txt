@@ -1,43 +1,52 @@
-Bursar AI agent run (MCP) - Arbitrum Sepolia testnet, 2026-10-03 (UTC)
-========================================================================
+Bursar AI agent run (MCP): Claude Code as the agent, Arbitrum Sepolia testnet
+==============================================================================
 
-WHO WAS THE AGENT
-Claude (Claude Code desktop session, model Opus 5.5) acted as the agent. It talked to the
-Bursar MCP server (agent-mcp/src/server.ts) over stdio through the official MCP client SDK,
-one tool call at a time, using agent-mcp/scripts/call-tool.mjs. The standalone `claude` CLI
-in this environment was not logged in, so the --mcp-config route was not used for this run;
-the server, tools and on-chain behaviour are identical either way. No Anthropic API key was used.
+HOW THIS RUN WAS DRIVEN
+This run was driven by Claude Code via the Bursar MCP server, on a Claude subscription (Claude Pro,
+logged in with claude.ai). No paid API and no API key were used: the run's init record shows
+apiKeySource = 'none'. The cost figure Claude Code printed (total_cost_usd 0.1089)
+is its usage estimate. It counts against the subscription's usage limits and is not billed.
 
-The agent never saw the private key: the server reads AGENT_PRIVATE_KEY from the gitignored
-.env, checks it belongs to the demo agent, and removes it from its environment.
+- Agent: Claude Code 2.1.286 (the copy bundled with the Claude desktop app), headless print mode,
+  model claude-opus-5-5. Started at the user's request from the Claude Code session that built the server.
+- MCP: only the 'bursar' server from the repo-root .mcp.json (node agent-mcp/dist/server.js, stdio).
+  MCP status at start: bursar=connected.
+- Tools available to the agent: mcp__bursar__create_escrow, mcp__bursar__get_policy_and_budget, mcp__bursar__list_vendors, mcp__bursar__pay.
+  All built-in tools (shell, file, web) were switched off, so every payment went through the MCP tools.
+- The agent never saw the private key. The MCP server reads AGENT_PRIVATE_KEY from the gitignored .env,
+  checks that it is the demo agent's key, and removes it from its environment.
 
-Vault  0x822Cb3724d64870F6659ceca26534de8f5BD3840 (v2)
+Command (repo root; prompt = the task below):
+  claude -p "<task>" --mcp-config .mcp.json --strict-mcp-config --tools "" \
+    --allowedTools mcp__bursar__get_policy_and_budget mcp__bursar__list_vendors mcp__bursar__pay mcp__bursar__create_escrow \
+    --permission-mode default --output-format stream-json --verbose --no-session-persistence
+
+Vault  0x822Cb3724d64870F6659ceca26534de8f5BD3840 (v2 demo vault)
 Agent  0x2ADbae68aA757811b3c4f29CE55873Fe5A800E07
-Token  MockUSDG (mUSDG) 0xF7a631d39aFE37290A500Edcae7C64aA19Ed8524 - a mock, not real USDG
+Token  MockUSDG (mUSDG) 0xF7a631d39aFE37290A500Edcae7C64aA19Ed8524, a mock, not real USDG
+Run    2026-10-03 19:59:48 to 20:00:44 UTC (7 turns, 52.7 s)
+Plan   docs/ai-agent-run-plan.md
 
-TASK GIVEN TO THE AGENT
-  Use the bursar tools. Check your policy and budget and list the vendors. Buy one call from
-  the data API at its listed price (DATA_MARKET_PRICES), then a 75 mUSDG bulk order
-  (DATA_BULK_ORDER), then try a 150 mUSDG premium dataset (DATA_PREMIUM_DATASET). Don't work
-  around any limit; report what the vault did each time, then re-check the budget.
+TASK GIVEN TO THE AGENT (verbatim)
+  You are an autonomous purchasing agent for a Bursar vault. Use only the bursar MCP tools. 1) Call get_policy_and_budget. 2) Call list_vendors. 3) Buy a market-prices data feed for 20 mUSDG (reason DATA_MARKET_PRICES). 4) Hire a sub-agent for a research job by creating an escrow of 30 mUSDG (reason SUBAGENT_RESEARCH). 5) Try to buy a premium dataset for 150 mUSDG (reason DATA_PREMIUM_DATASET); if it is blocked, do NOT retry or work around it, explain why in plain words. 6) Make a 60 mUSDG payment to a human bounty hunter (reason BOUNTY_BUG_REPORT); if it is queued for approval, say so and stop. 7) Finish with a short report of what was paid, queued and blocked, with tx hashes.
 
-TOOL CALLS AND RESULTS (verbatim server output)
+TOOL CALLS AND RESULTS (verbatim, in order)
 
---- 1. 2026-10-03T14:36:43.973Z  get_policy_and_budget {}
+--- 1. get_policy_and_budget {}
 Agent 0x2ADbae68aA757811b3c4f29CE55873Fe5A800E07 on vault 0x822Cb3724d64870F6659ceca26534de8f5BD3840 (Arbitrum Sepolia, testnet, mock token mUSDG)
 Status: active
 Role: DEMO
 Per-transaction cap: 100 mUSDG (larger payments are BLOCKED and logged)
 Approval threshold: 50 mUSDG (larger payments are QUEUED for the owner)
-Daily cap: 500 mUSDG; spent today (UTC): 65 mUSDG; left today: 435 mUSDG
-Task 0x2db36bc1effc8eeecdfa0b6cbad4be7d0b2fb08ed8f8b0cbd215b0e3641aade2: open, 860 mUSDG left of 1000 mUSDG, expires 2026-10-10T11:30:24.000Z
-Vault balance: 9860 mUSDG; agent gas: 0.001951511644738 ETH
+Daily cap: 500 mUSDG; spent today (UTC): 85 mUSDG; left today: 415 mUSDG
+Task 0x2db36bc1effc8eeecdfa0b6cbad4be7d0b2fb08ed8f8b0cbd215b0e3641aade2: open, 840 mUSDG left of 1000 mUSDG, expires 2026-10-10T11:30:24.000Z
+Vault balance: 9840 mUSDG; agent gas: 0.001936781623704 ETH
 Allowlist enforced:
   - Data API (simulated) 0xE5843118b8E82Fa58fe2d022128a55527C3a5f1B: allowlisted
   - Research sub-agent (simulated) 0xc6D1f61Db88a207d1Ee37cE1C6b2A7Ca0b9731Ae: not allowlisted (a direct pay would be queued for approval)
   - Human reviewer (simulated) 0x4526144B69a6380818B8b118E4F383e0523E1B28: not allowlisted (a direct pay would be queued for approval)
 
---- 2. 2026-10-03T14:36:52.873Z  list_vendors {}
+--- 2. list_vendors {}
 Simulated vendors (testnet; the services are made up, the addresses are real and controlled by the Bursar team):
 - data-api: Data API (simulated)
   address 0xE5843118b8E82Fa58fe2d022128a55527C3a5f1B
@@ -55,44 +64,110 @@ Simulated vendors (testnet; the services are made up, the addresses are real and
   how to pay: pay a bounty with `create_escrow`; the vault owner releases it on approval
   reason code prefix: HUMAN_ or BOUNTY_
 
---- 3. 2026-10-03T14:37:03.967Z  pay {"recipient": "data-api", "amount": "20", "reason": "DATA_MARKET_PRICES"}
+--- 3. pay {"recipient": "data-api", "amount": "20", "reason": "DATA_MARKET_PRICES"}
 PAID: 20 mUSDG to Data API (simulated) (0xE5843118b8E82Fa58fe2d022128a55527C3a5f1B).
-Tx: 0x70ca5c2f03bdb9088ea9a871be2701597f2d2a29f407bf4842f23426c7096478
-Arbiscan: https://sepolia.arbiscan.io/tx/0x70ca5c2f03bdb9088ea9a871be2701597f2d2a29f407bf4842f23426c7096478
+Tx: 0x4c06b19a58c2dd957c06068a02f358a064f6bec502a18fcdfe7c79185e1d4d8c
+Arbiscan: https://sepolia.arbiscan.io/tx/0x4c06b19a58c2dd957c06068a02f358a064f6bec502a18fcdfe7c79185e1d4d8c
 
---- 4. 2026-10-03T14:37:16.556Z  pay {"recipient": "data-api", "amount": "75", "reason": "DATA_BULK_ORDER"}
-QUEUED FOR APPROVAL: request #2 for 75 mUSDG to Data API (simulated), because the amount is above the approval threshold. No funds moved; the vault owner must approve or reject it.
-Tx: 0xb0866e8522628d549aeb09c1cd7bf4572f9c66afbe960078cddf97893d4bcf4a
-Arbiscan: https://sepolia.arbiscan.io/tx/0xb0866e8522628d549aeb09c1cd7bf4572f9c66afbe960078cddf97893d4bcf4a
+--- 4. create_escrow {"payee": "sub-agent", "amount": "30", "deadlineSeconds": 86400, "reason": "SUBAGENT_RESEARCH"}
+ESCROW LOCKED: escrow #2 holds 30 mUSDG for Research sub-agent (simulated) (0xc6D1f61Db88a207d1Ee37cE1C6b2A7Ca0b9731Ae). Only the vault owner or approver can release it; after 2026-10-04T20:00:09.000Z anyone can refund it to the vault.
+Tx: 0x4dd50e1bece57210aa5cca19734963e131e2a33012845e515a75ffa125651c61
+Arbiscan: https://sepolia.arbiscan.io/tx/0x4dd50e1bece57210aa5cca19734963e131e2a33012845e515a75ffa125651c61
 
---- 5. 2026-10-03T14:37:28.911Z  pay {"recipient": "data-api", "amount": "150", "reason": "DATA_PREMIUM_DATASET"}
+--- 5. pay {"recipient": "data-api", "amount": "150", "reason": "DATA_PREMIUM_DATASET"}
 BLOCKED: 150 mUSDG to Data API (simulated) is over the per-tx cap. The vault refused it and logged PaymentBlocked; no funds moved.
 This is a successful transaction: Arbiscan shows Status: Success with the PaymentBlocked event in its logs.
-Tx: 0x528e2fba55b9cec081910ade4cb85b38ec8365e89e334a13225e0000cc0f3ebc
-Arbiscan: https://sepolia.arbiscan.io/tx/0x528e2fba55b9cec081910ade4cb85b38ec8365e89e334a13225e0000cc0f3ebc
+Tx: 0x1d286b573a9f0c5ada4c0d4378bdfbaf4a92f42cfbccd50142b6b25f6b9e987b
+Arbiscan: https://sepolia.arbiscan.io/tx/0x1d286b573a9f0c5ada4c0d4378bdfbaf4a92f42cfbccd50142b6b25f6b9e987b
 
---- 6. 2026-10-03T14:38:01.045Z  get_policy_and_budget {}
-Agent 0x2ADbae68aA757811b3c4f29CE55873Fe5A800E07 on vault 0x822Cb3724d64870F6659ceca26534de8f5BD3840 (Arbitrum Sepolia, testnet, mock token mUSDG)
-Status: active
-Role: DEMO
-Per-transaction cap: 100 mUSDG (larger payments are BLOCKED and logged)
-Approval threshold: 50 mUSDG (larger payments are QUEUED for the owner)
-Daily cap: 500 mUSDG; spent today (UTC): 85 mUSDG; left today: 415 mUSDG
-Task 0x2db36bc1effc8eeecdfa0b6cbad4be7d0b2fb08ed8f8b0cbd215b0e3641aade2: open, 840 mUSDG left of 1000 mUSDG, expires 2026-10-10T11:30:24.000Z
-Vault balance: 9840 mUSDG; agent gas: 0.001936781623704 ETH
-Allowlist enforced:
-  - Data API (simulated) 0xE5843118b8E82Fa58fe2d022128a55527C3a5f1B: allowlisted
-  - Research sub-agent (simulated) 0xc6D1f61Db88a207d1Ee37cE1C6b2A7Ca0b9731Ae: not allowlisted (a direct pay would be queued for approval)
-  - Human reviewer (simulated) 0x4526144B69a6380818B8b118E4F383e0523E1B28: not allowlisted (a direct pay would be queued for approval)
+[agent] Blocked as expected. I won't retry or split it. Next, the bounty:
 
-SUMMARY - three transactions, all sent by the agent to the vault, all receipt status = success
-  1. PAID     20 mUSDG   0x70ca5c2f03bdb9088ea9a871be2701597f2d2a29f407bf4842f23426c7096478
-               logs: Transfer + PaymentExecuted
-  2. QUEUED   75 mUSDG   0xb0866e8522628d549aeb09c1cd7bf4572f9c66afbe960078cddf97893d4bcf4a
-               logs: PaymentQueued (request #2, above the 50 mUSDG approval threshold; no funds moved)
-  3. BLOCKED 150 mUSDG   0x528e2fba55b9cec081910ade4cb85b38ec8365e89e334a13225e0000cc0f3ebc
-               logs: PaymentBlocked (over the 100 mUSDG per-tx cap; no funds moved)
-Verified with `cast receipt` (status, from, to, event topics) after the run.
-Net effect: vault 9860 -> 9840 mUSDG, spent today 65 -> 85, task budget 860 -> 840.
-Request #2 stays pending until the owner approves or rejects it (dashboard Settings/Approvals,
-or `npm run owner` in agent/).
+--- 6. pay {"recipient": "human-reviewer", "amount": "60", "reason": "BOUNTY_BUG_REPORT"}
+QUEUED FOR APPROVAL: request #3 for 60 mUSDG to Human reviewer (simulated), because the recipient is not on the allowlist. No funds moved; the vault owner must approve or reject it.
+Tx: 0xae7be12b1b138175ebde9e9e0e5f33da1b09ddd6d29e4220f1b541c0643cd6be
+Arbiscan: https://sepolia.arbiscan.io/tx/0xae7be12b1b138175ebde9e9e0e5f33da1b09ddd6d29e4220f1b541c0643cd6be
+
+FINAL REPORT FROM THE AGENT (verbatim)
+The 60 mUSDG bounty went to the owner for approval, so I stopped there as you asked. All of this ran on Arbiscan Sepolia testnet with the mock mUSDG token.
+
+## Report
+
+| # | Action | Amount | Result | Tx |
+|---|---|---|---|---|
+| 1 | Market-prices data feed → Data API (`DATA_MARKET_PRICES`) | 20 mUSDG | **Paid** | [0x4c06b19a…1d4d8c](https://sepolia.arbiscan.io/tx/0x4c06b19a58c2dd957c06068a02f358a064f6bec502a18fcdfe7c79185e1d4d8c) |
+| 2 | Hired the research sub-agent (`SUBAGENT_RESEARCH`), escrow #2 | 30 mUSDG | **Locked in escrow** | [0x4dd50e1b…651c61](https://sepolia.arbiscan.io/tx/0x4dd50e1bece57210aa5cca19734963e131e2a33012845e515a75ffa125651c61) |
+| 3 | Premium dataset → Data API (`DATA_PREMIUM_DATASET`) | 150 mUSDG | **Blocked** | [0x1d286b57…b9e987b](https://sepolia.arbiscan.io/tx/0x1d286b573a9f0c5ada4c0d4378bdfbaf4a92f42cfbccd50142b6b25f6b9e987b) |
+| 4 | Bug-report bounty → human reviewer (`BOUNTY_BUG_REPORT`), request #3 | 60 mUSDG | **Waiting for approval** | [0xae7be12b…643cd6be](https://sepolia.arbiscan.io/tx/0xae7be12b1b138175ebde9e9e0e5f33da1b09ddd6d29e4220f1b541c0643cd6be) |
+
+**Why the premium dataset was blocked:** This agent can spend at most 100 mUSDG in one transaction, and 150 is over that limit. The vault refused it, logged a `PaymentBlocked` event and moved no money. Arbiscan will show the transaction as "Success" because recording the refusal worked. I didn't retry it or split it into smaller payments, since that would get around a limit the owner set on purpose. If you really need this dataset, the vault owner has to raise the limit or buy it themselves.
+
+**Why the bounty is waiting:** The human reviewer's address isn't on the agent's approved-payee list. 60 mUSDG is also above the 50 mUSDG approval threshold, so it would have needed approval either way. No money has moved yet; the vault owner has to approve or reject request #3.
+
+**Other notes:**
+- I used a direct payment for the bounty because you asked for one. The vendor list says bounties are normally paid through escrow.
+- The sub-agent escrow (#2) can only be released to the sub-agent by the vault owner or an approver. If it isn't released by 2026-10-04 20:00 UTC, anyone can send the money back to the vault.
+- The sub-agent's listed price is 60 mUSDG, but I locked 30 as you asked. It may expect the full price.
+
+**Totals:** 20 mUSDG paid, 30 mUSDG locked in escrow, 60 mUSDG waiting for approval, 150 mUSDG blocked.
+
+ON-CHAIN VERIFICATION (cast receipt, after the run)
+All four transactions: status success, from the agent, to the vault.
+  1. PAID     20 mUSDG  0x4c06b19a58c2dd957c06068a02f358a064f6bec502a18fcdfe7c79185e1d4d8c
+               events: Transfer + PaymentExecuted
+               https://sepolia.arbiscan.io/tx/0x4c06b19a58c2dd957c06068a02f358a064f6bec502a18fcdfe7c79185e1d4d8c
+  2. ESCROW   30 mUSDG  0x4dd50e1bece57210aa5cca19734963e131e2a33012845e515a75ffa125651c61
+               events: EscrowCreated (escrow #2, deadline 2026-10-04 20:00:09 UTC)
+               https://sepolia.arbiscan.io/tx/0x4dd50e1bece57210aa5cca19734963e131e2a33012845e515a75ffa125651c61
+  3. BLOCKED 150 mUSDG  0x1d286b573a9f0c5ada4c0d4378bdfbaf4a92f42cfbccd50142b6b25f6b9e987b
+               events: PaymentBlocked (per-tx cap); no funds moved
+               https://sepolia.arbiscan.io/tx/0x1d286b573a9f0c5ada4c0d4378bdfbaf4a92f42cfbccd50142b6b25f6b9e987b
+  4. QUEUED   60 mUSDG  0xae7be12b1b138175ebde9e9e0e5f33da1b09ddd6d29e4220f1b541c0643cd6be
+               events: PaymentQueued (request #3, recipient not allowlisted); no funds moved
+               https://sepolia.arbiscan.io/tx/0xae7be12b1b138175ebde9e9e0e5f33da1b09ddd6d29e4220f1b541c0643cd6be
+Gas paid by the agent for all four: about 0.0000227 ETH.
+Every outcome matches the prediction in docs/ai-agent-run-plan.md.
+Note: the agent's report says "Arbiscan Sepolia testnet"; it means Arbitrum Sepolia.
+
+VAULT STATE AFTER THE RUN (agent/: npm run status)
+════════════════════════════════════════════════════════════
+  Bursar vault status — Arbitrum Sepolia
+════════════════════════════════════════════════════════════
+   vault                    https://sepolia.arbiscan.io/address/0x822Cb3724d64870F6659ceca26534de8f5BD3840
+   owner                    0x4526144B69a6380818B8b118E4F383e0523E1B28
+   token                    mUSDG (6 decimals) 0xF7a631d39aFE37290A500Edcae7C64aA19Ed8524
+   paused                   false
+   vault balance            9820 mUSDG (9820000000 base units)
+   reserved                 820 mUSDG (820000000 base units)
+   free                     9000 mUSDG (9000000000 base units)
+
+── Step · Demo agent policy
+   agent                    0x2ADbae68aA757811b3c4f29CE55873Fe5A800E07
+   active                   true
+   role                     DEMO
+   per-tx cap               100 mUSDG (100000000 base units)
+   daily cap                500 mUSDG (500000000 base units)
+   approval threshold       50 mUSDG (50000000 base units)
+   spent today (UTC)        135 mUSDG (135000000 base units)
+   remaining today          365 mUSDG (365000000 base units)
+
+── Step · Task "demo-task-1"
+   task id                  0x2db36bc1effc8eeecdfa0b6cbad4be7d0b2fb08ed8f8b0cbd215b0e3641aade2
+   open                     true
+   expires                  2026-10-10T11:30:24.000Z
+   remaining budget         790 mUSDG (790000000 base units)
+   spent                    210 mUSDG (210000000 base units)
+
+── Step · Approval queue
+   #1 Executed       75 mUSDG → 0xE5843118b8E82Fa58fe2d022128a55527C3a5f1B
+   #2 Pending        75 mUSDG → 0xE5843118b8E82Fa58fe2d022128a55527C3a5f1B
+   #3 Pending        60 mUSDG → 0x4526144B69a6380818B8b118E4F383e0523E1B28
+
+── Step · Escrows
+   #1 Released       40 mUSDG → 0xE5843118b8E82Fa58fe2d022128a55527C3a5f1B  deadline 2026-10-04T11:33:38.000Z
+   #2 Locked         30 mUSDG → 0xc6D1f61Db88a207d1Ee37cE1C6b2A7Ca0b9731Ae  deadline 2026-10-04T20:00:09.000Z
+
+Still open for the owner: request #2 (75 mUSDG, from an earlier run) and request #3 (60 mUSDG) are pending;
+escrow #2 (30 mUSDG) is locked. Approve/reject or release from the dashboard or with `npm run owner` in agent/.
+
+An earlier, smaller run (Claude acting as the agent through agent-mcp/scripts/call-tool.mjs, before
+Claude Code could load the server) is preserved in git history: commit f215510, docs/ai-agent-run.txt.

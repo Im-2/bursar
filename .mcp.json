@@ -1,8 +1,9 @@
 {
   "mcpServers": {
     "bursar": {
+      "type": "stdio",
       "command": "node",
-      "args": ["agent-mcp/node_modules/tsx/dist/cli.mjs", "agent-mcp/src/server.ts"],
+      "args": ["agent-mcp/dist/server.js"],
       "env": {}
     }
   }
