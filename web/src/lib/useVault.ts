@@ -1,13 +1,41 @@
-// Polls the live vault. Every value shown on the dashboard comes from here, i.e. from the chain.
-import { useEffect, useRef, useState } from "react";
-import type { AbiEvent, Address, Hex } from "viem";
+// Polls a live BursarVault. Every value the UI shows comes from here, i.e. from the chain.
+import { useCallback, useEffect, useRef, useState } from "react";
+import { parseAbiItem, type AbiEvent, type Address, type Hex } from "viem";
 import { tokenAbi, vaultAbi } from "../abi";
 import { client, DEPLOYMENT, POLL_MS } from "./chain";
 
-const vault = { address: DEPLOYMENT.vault, abi: vaultAbi } as const;
-const token = { address: DEPLOYMENT.token, abi: tokenAbi } as const;
 const vaultEvents = vaultAbi.filter((x): x is Extract<(typeof vaultAbi)[number], { type: "event" }> => x.type === "event");
-const LOG_CHUNK = 500_000n;
+const vaultCreated = parseAbiItem("event VaultCreated(address indexed owner, address indexed vault, address indexed token)");
+// Public RPCs cap eth_getLogs ranges differently (official: 500k+, publicnode: 50k, some free tiers: 10k).
+// Start large and step down on a range error; the size that works is remembered for later calls.
+const CHUNK_STEPS = [500_000n, 50_000n, 10_000n];
+let chunkIndex = 0;
+
+function isRangeError(e: unknown): boolean {
+  const text = `${(e as { details?: string }).details ?? ""} ${(e as Error).message ?? ""}`.toLowerCase();
+  return /range|block|limit|exceed|too many|10000|50000/.test(text);
+}
+
+/** Fetches logs for [from, to] in chunks that the current RPC accepts. */
+async function getLogsChunked<T>(from: bigint, to: bigint, fetchRange: (from: bigint, to: bigint) => Promise<T[]>): Promise<T[]> {
+  const out: T[] = [];
+  let cursor = from;
+  while (cursor <= to) {
+    const size = CHUNK_STEPS[chunkIndex];
+    const end = cursor + size - 1n < to ? cursor + size - 1n : to;
+    try {
+      out.push(...(await fetchRange(cursor, end)));
+      cursor = end + 1n;
+    } catch (e) {
+      if (chunkIndex < CHUNK_STEPS.length - 1 && isRangeError(e)) {
+        chunkIndex++; // retry the same window with a smaller range
+        continue;
+      }
+      throw e;
+    }
+  }
+  return out;
+}
 
 export const FEED_EVENTS = [
   "PaymentExecuted",
@@ -51,9 +79,23 @@ export type VaultData = Awaited<ReturnType<typeof readSnapshot>> & {
   fetchedAt: number; // local ms, for "last updated" and ticking countdowns
 };
 
-async function readSnapshot(logs: RawLog[]) {
+/** Block the vault was created in: known for the demo vault, otherwise from the factory's VaultCreated event. */
+async function resolveStartBlock(vaultAddr: Address): Promise<bigint> {
+  if (vaultAddr === DEPLOYMENT.vault) return DEPLOYMENT.vaultDeployBlock;
+  const latest = await client.getBlockNumber();
+  const logs = await getLogsChunked(DEPLOYMENT.factoryDeployBlock, latest, (fromBlock, toBlock) =>
+    client.getLogs({ address: DEPLOYMENT.factory, event: vaultCreated, args: { vault: vaultAddr }, fromBlock, toBlock }),
+  );
+  if (logs.length) return logs[0].blockNumber!;
+  // Not created by our factory: still a valid vault, scan from the factory deployment onwards.
+  return DEPLOYMENT.factoryDeployBlock;
+}
+
+async function readSnapshot(vaultAddr: Address, logs: RawLog[]) {
+  const vault = { address: vaultAddr, abi: vaultAbi } as const;
+
   // Discover agents, recipients and tasks from the event history, then read their current state.
-  const agents = new Set<Address>([DEPLOYMENT.demoAgent]);
+  const agents = new Set<Address>(vaultAddr === DEPLOYMENT.vault ? [DEPLOYMENT.demoAgent] : []);
   const agentRecipientCandidates = new Map<Address, Set<Address>>();
   const globalCandidates = new Set<Address>();
   const taskIds: Hex[] = [];
@@ -69,18 +111,23 @@ async function readSnapshot(logs: RawLog[]) {
     if (l.eventName === "TaskOpened" && !taskIds.includes(a.taskId as Hex)) taskIds.push(a.taskId as Hex);
   }
 
-  const [head, symbol, decimals, owner, paused, approver, enforceAllowlist, totalReserved, freeBalance, balance, requestCount, escrowCount] =
+  const tokenAddress = await client.readContract({ ...vault, functionName: "token" });
+  const token = { address: tokenAddress, abi: tokenAbi } as const;
+
+  const [head, symbol, decimals, owner, pendingOwner, paused, approver, enforceAllowlist, requestTTL, totalReserved, freeBalance, balance, requestCount, escrowCount] =
     await Promise.all([
       client.getBlock({ blockTag: "latest" }),
       client.readContract({ ...token, functionName: "symbol" }),
       client.readContract({ ...token, functionName: "decimals" }),
       client.readContract({ ...vault, functionName: "owner" }),
+      client.readContract({ ...vault, functionName: "pendingOwner" }),
       client.readContract({ ...vault, functionName: "paused" }),
       client.readContract({ ...vault, functionName: "approver" }),
       client.readContract({ ...vault, functionName: "enforceAllowlist" }),
+      client.readContract({ ...vault, functionName: "requestTTL" }),
       client.readContract({ ...vault, functionName: "totalReserved" }),
       client.readContract({ ...vault, functionName: "freeBalance" }),
-      client.readContract({ ...token, functionName: "balanceOf", args: [DEPLOYMENT.vault] }),
+      client.readContract({ ...token, functionName: "balanceOf", args: [vaultAddr] }),
       client.readContract({ ...vault, functionName: "requestCount" }),
       client.readContract({ ...vault, functionName: "escrowCount" }),
     ]);
@@ -117,13 +164,16 @@ async function readSnapshot(logs: RawLog[]) {
   ]);
 
   return {
+    vault: vaultAddr,
     blockNumber: head.number,
     chainTime: head.timestamp,
-    token: { symbol, decimals },
+    token: { address: tokenAddress, symbol, decimals },
     owner,
+    pendingOwner,
     paused,
     approver,
     enforceAllowlist,
+    requestTTL,
     totalReserved,
     freeBalance,
     balance,
@@ -162,55 +212,62 @@ function toFeedEvent(l: RawLog, timestamp: bigint): FeedEvent | null {
   }
 }
 
-export function useVault() {
+/** Live view of one vault. `refresh()` re-reads immediately (e.g. right after a transaction confirms). */
+export function useVault(vaultAddr: Address | null) {
   const [data, setData] = useState<VaultData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const logsRef = useRef<RawLog[]>([]);
-  const nextBlockRef = useRef<bigint>(DEPLOYMENT.vaultDeployBlock);
-  const blockTimes = useRef(new Map<bigint, bigint>());
+  const pollNow = useRef<() => void>(() => {});
 
   useEffect(() => {
+    setData(null);
+    setError(null);
+    setLoading(true);
+    if (!vaultAddr) {
+      setLoading(false);
+      return;
+    }
     let cancelled = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
+    let running = false;
+    let again = false;
+    let logs: RawLog[] = [];
+    let nextBlock: bigint | null = null;
+    const blockTimes = new Map<bigint, bigint>();
 
     async function syncLogs() {
+      if (nextBlock === null) nextBlock = await resolveStartBlock(vaultAddr!);
       const latest = await client.getBlockNumber();
-      const fresh: RawLog[] = [];
-      for (let from = nextBlockRef.current; from <= latest; from += LOG_CHUNK) {
-        const to = from + LOG_CHUNK - 1n < latest ? from + LOG_CHUNK - 1n : latest;
-        const logs = await client.getLogs({
-          address: DEPLOYMENT.vault,
-          events: vaultEvents as unknown as AbiEvent[],
-          fromBlock: from,
-          toBlock: to,
-        });
-        for (const l of logs) {
-          fresh.push({
-            eventName: (l as { eventName: string }).eventName,
-            args: (l as { args: Record<string, unknown> }).args,
-            blockNumber: l.blockNumber!,
-            logIndex: l.logIndex!,
-            transactionHash: l.transactionHash!,
-          });
-        }
-      }
-      // Timestamps for new blocks only (cached across polls).
-      const missing = [...new Set(fresh.map((l) => l.blockNumber))].filter((b) => !blockTimes.current.has(b));
+      const page = await getLogsChunked(nextBlock, latest, (fromBlock, toBlock) =>
+        client.getLogs({ address: vaultAddr!, events: vaultEvents as unknown as AbiEvent[], fromBlock, toBlock }),
+      );
+      const fresh: RawLog[] = page.map((l) => ({
+        eventName: (l as { eventName: string }).eventName,
+        args: (l as { args: Record<string, unknown> }).args,
+        blockNumber: l.blockNumber!,
+        logIndex: l.logIndex!,
+        transactionHash: l.transactionHash!,
+      }));
+      const missing = [...new Set(fresh.map((l) => l.blockNumber))].filter((b) => !blockTimes.has(b));
       const blocks = await Promise.all(missing.map((b) => client.getBlock({ blockNumber: b })));
-      blocks.forEach((b) => blockTimes.current.set(b.number, b.timestamp));
-      // De-duplicate: React StrictMode (dev) can briefly run two pollers against the same refs.
-      const seen = new Set(logsRef.current.map((l) => `${l.transactionHash}-${l.logIndex}`));
-      logsRef.current = [...logsRef.current, ...fresh.filter((l) => !seen.has(`${l.transactionHash}-${l.logIndex}`))];
-      nextBlockRef.current = latest + 1n;
+      blocks.forEach((b) => blockTimes.set(b.number, b.timestamp));
+      const seen = new Set(logs.map((l) => `${l.transactionHash}-${l.logIndex}`));
+      logs = [...logs, ...fresh.filter((l) => !seen.has(`${l.transactionHash}-${l.logIndex}`))];
+      nextBlock = latest + 1n;
     }
 
     async function poll() {
+      if (running) {
+        again = true; // a refresh was requested mid-poll; run once more when this one ends
+        return;
+      }
+      running = true;
+      if (timer) clearTimeout(timer);
       try {
         await syncLogs();
-        const snap = await readSnapshot(logsRef.current);
-        const events = logsRef.current
-          .map((l) => toFeedEvent(l, blockTimes.current.get(l.blockNumber)!))
+        const snap = await readSnapshot(vaultAddr!, logs);
+        const events = logs
+          .map((l) => toFeedEvent(l, blockTimes.get(l.blockNumber)!))
           .filter((e): e is FeedEvent => e !== null)
           .sort((x, y) => (x.blockNumber === y.blockNumber ? y.logIndex - x.logIndex : Number(y.blockNumber - x.blockNumber)));
         if (cancelled) return;
@@ -221,19 +278,28 @@ export function useVault() {
         const msg = e instanceof Error ? (e as { shortMessage?: string }).shortMessage ?? e.message : String(e);
         setError(msg);
       } finally {
+        running = false;
         if (!cancelled) {
           setLoading(false);
-          timer = setTimeout(poll, POLL_MS);
+          if (again) {
+            again = false;
+            poll();
+          } else {
+            timer = setTimeout(poll, POLL_MS);
+          }
         }
       }
     }
 
+    pollNow.current = poll;
     poll();
     return () => {
       cancelled = true;
+      pollNow.current = () => {};
       if (timer) clearTimeout(timer);
     };
-  }, []);
+  }, [vaultAddr]);
 
-  return { data, error, loading };
+  const refresh = useCallback(() => pollNow.current(), []);
+  return { data, error, loading, refresh };
 }

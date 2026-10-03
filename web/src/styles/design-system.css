@@ -406,3 +406,151 @@ a:hover {
   clip: rect(0 0 0 0);
   white-space: nowrap;
 }
+
+/* ------------------------------------------------------------------ button variants */
+
+.ds-button--small {
+  padding: var(--space-1) var(--space-3);
+  font-size: var(--fs-xs);
+}
+.ds-button--danger {
+  background: var(--c-black);
+  color: var(--c-red);
+}
+.ds-button--danger:hover {
+  background: var(--c-red);
+  color: var(--c-black);
+}
+.ds-button--ghost {
+  background: var(--c-card);
+  color: var(--c-black);
+}
+.ds-button--ghost:hover {
+  background: var(--c-lime);
+}
+.ds-button--lime {
+  background: var(--c-lime);
+  color: var(--c-black);
+}
+.ds-button--lime:hover {
+  background: var(--c-black);
+  color: var(--c-lime);
+}
+
+/* ------------------------------------------------------------------ forms */
+
+.field {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 0;
+}
+.field__hint {
+  color: var(--c-gray);
+  font-size: var(--fs-xs);
+}
+.ds-input,
+.ds-select {
+  width: 100%;
+  min-width: 0;
+  padding: var(--space-2) var(--space-3);
+  border: var(--border-thin);
+  background: var(--c-card);
+  color: var(--c-black);
+  font: inherit;
+  font-weight: 700;
+}
+.ds-input:focus-visible,
+.ds-select:focus-visible {
+  outline: 3px solid var(--c-blue);
+  outline-offset: 0;
+}
+.ds-input[aria-invalid="true"] {
+  background: #ffe1e1;
+}
+.ds-check {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: var(--fs-sm);
+}
+.ds-check input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--c-black);
+}
+.ds-form {
+  display: grid;
+  gap: var(--space-4);
+}
+.ds-form__row {
+  display: grid;
+  gap: var(--space-4);
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 160px), 1fr));
+}
+.ds-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+/* ------------------------------------------------------------------ tx status / confirm / wallet */
+
+.tx-status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+  font-size: var(--fs-xs);
+}
+.tx-status__label {
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.tx-status__error {
+  background: var(--c-black);
+  color: var(--c-red);
+  padding: 1px 6px;
+  font-weight: 700;
+}
+.tx-status__msg {
+  color: var(--c-gray);
+}
+.confirm {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+.confirm__text {
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--c-red);
+  background: var(--c-black);
+  padding: var(--space-1) var(--space-2);
+}
+.wallet-account {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+.wallet-note {
+  font-size: var(--fs-xs);
+}
+.ds-note {
+  border: var(--border-thin);
+  background: var(--c-card);
+  padding: var(--space-3) var(--space-4);
+  font-size: var(--fs-sm);
+}
+.ds-note--amber {
+  background: var(--c-amber);
+}

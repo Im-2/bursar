@@ -1,10 +1,11 @@
 # Bursar dashboard (`web/`)
 
-Vite + React + TypeScript + [viem](https://viem.sh), with plain custom CSS. It's a **read-only** view of the live BursarVault on Arbitrum Sepolia. Every number is read from the chain; there is no wallet, signer or private key anywhere in this app.
+Vite + React + TypeScript + [viem](https://viem.sh), with plain custom CSS. Every number is read from the chain. **The app holds no keys:** reads go through a public RPC, and writes are signed in the visitor's own browser wallet (the injected EIP-1193 provider, `window.ethereum`).
 
 | Route | Page |
 |---|---|
-| `/dashboard` | Stage A dashboard: vault, balances, agents, tasks, approval queue, escrows, live activity |
+| `/dashboard` | The demo vault: live state for everyone, plus the **owner console** when the connected wallet owns the vault |
+| `/dashboard?vault=0x…` | The same view for any Bursar vault on Arbitrum Sepolia |
 | `/` | Reserved for the landing page; currently redirects to `/dashboard` |
 
 ![Dashboard, desktop](../docs/screenshots/dashboard-desktop.png)
@@ -20,6 +21,27 @@ npm run preview    # serve the production build
 ```
 
 On Windows PowerShell, use `npm.cmd` if `npm` is blocked by the script execution policy.
+
+## Owner console (Stage B)
+
+Connect a browser wallet. The app asks it to switch to Arbitrum Sepolia (chain 421614), and to add the network first if the wallet doesn't know it.
+
+- **Owner:** actions appear inline and in the owner console.
+  - **Approval queue:** approve or reject pending requests.
+  - **Escrows:** release them (also allowed for the approver), or refund them once past their deadline (anyone can).
+  - **Tasks:** open a task (id = `keccak256(label)`) or close one.
+  - **Agents:** register or update a policy; revoke an agent.
+  - **Allowlists:** add or remove recipients per agent or vault-wide, and toggle enforce-allowlist.
+  - **Settings:** escrow approver, request TTL, pause and unpause.
+- **Anyone else:** the page stays read-only, with a hint naming the owner address to connect as.
+
+Every action follows the same steps:
+
+1. **Simulate** with `eth_call` as your address. If the vault would revert, nothing is sent. The UI shows the decoded custom error, e.g. `InsufficientFreeBalance()` or `ExceedsPerTxCap()`.
+2. **Sign** in your wallet. The status shows *Confirm in wallet*.
+3. **Pending**, then **Confirmed**, with the transaction linked on Arbiscan. The page then re-reads the vault immediately.
+
+Destructive actions (pause, revoke, close task) ask for a second click to confirm.
 
 ## Configuration
 
@@ -37,7 +59,8 @@ The fallback exists because the official public endpoint occasionally returns a 
 
 - **Addresses:** `../deployments/arbitrum-sepolia.json`, imported at build time. Vite is allowed to read only that folder outside `web/`.
 - **ABIs:** `src/abi.ts`, generated from Foundry's compiled artifacts. After changing the contracts, run `forge build` in the repo root, then `npm run abi`.
-- **Live state:** `src/lib/useVault.ts` polls every `VITE_POLL_MS`:
+- **Live state:** `src/lib/useVault.ts` polls every `VITE_POLL_MS`, for whichever vault is selected:
+  - **Start block:** the vault's creation block, found from the factory's `VaultCreated` event (the demo vault's is known).
   - **State reads** (owner, paused, balances, policies, tasks, requests, escrows) are batched into multicall3 requests.
   - **Vault event logs** start at the vault's deploy block, then only new blocks are fetched. They drive the activity feed and let the dashboard discover agents, allowlisted recipients and tasks; the current state of each is then read on-chain.
   - **Block timestamps** for the feed are cached.
@@ -54,6 +77,34 @@ Amounts are shown in human units (6 decimals) with thousands separators. Hover a
 - **Shapes:** square corners, 4px black borders, and no shadows or gradients.
 - **Tables:** collapse into labelled blocks below 760px.
 - **Accessibility:** keyboard focus is always visible as a 3px blue outline.
+
+## Code map
+
+| Path | What |
+|---|---|
+| `src/lib/chain.ts` | Network, deployment addresses, public read client (with RPC fallback) |
+| `src/lib/wallet.tsx` | Injected-wallet connection, account and network tracking, switch/add Arbitrum Sepolia |
+| `src/lib/tx.ts` | `useTx()`: simulate → sign → wait, with custom-error decoding |
+| `src/lib/useVault.ts` | Live vault reader (state + event history), with `refresh()` |
+| `src/components/ds.tsx`, `styles/design-system.css` | Design system |
+| `src/components/web3.tsx` | Wallet button, tx status line, confirm button, form field |
+| `src/components/vault/panels.tsx` | Vault panels with inline owner/approver actions |
+| `src/components/vault/OwnerConsole.tsx` | Owner forms |
+
+## End-to-end tests
+
+`scripts/e2e/` drives the real app in headless Chrome against Arbitrum Sepolia, with **a throwaway test wallet**:
+
+- **Test-only wallet:** a `window.ethereum` shim is injected into the page (it isn't part of the app). It forwards wallet requests to Node, which signs with a key read from a file outside the repo (`BURSAR_TEST_WALLET_FILE`, the JSON from `cast wallet new --json`).
+- **No key in the page:** the key never enters the page or the build, and the scripts never print it.
+- **Funding:** the throwaway wallet needs a little Arbitrum Sepolia ETH.
+
+```bash
+npm run dev    # in one terminal
+BURSAR_TEST_WALLET_FILE=/path/outside/repo/wallet.json node scripts/e2e/stage-b.mjs
+```
+
+`stage-b.mjs` first seeds a fresh vault owned by the test wallet, with funds, an agent, a task, two queued requests and two escrows. It then uses only the UI to run every owner action: approve, reject, release, a decoded-error attempt, open and close a task, update the policy, allowlist, enforce-allowlist toggle, approver, TTL, pause and unpause, refund, and revoke. It saves screenshots to `docs/screenshots/stage-b-*.png`.
 
 ## Screenshots
 

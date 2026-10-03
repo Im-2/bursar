@@ -1,5 +1,6 @@
-// Network + deployment config. Read-only: there is no wallet, signer or key anywhere in this app.
-import { createPublicClient, fallback, getAddress, http, type Address } from "viem";
+// Network + deployment config. The app never holds keys: reads go through a public RPC, writes through
+// the visitor's own browser wallet (see wallet.tsx).
+import { createPublicClient, fallback, getAddress, http, isAddress, type Address } from "viem";
 import { arbitrumSepolia } from "viem/chains";
 import deployment from "../../../deployments/arbitrum-sepolia.json";
 
@@ -24,6 +25,7 @@ export const DEPLOYMENT = {
   vaultDeployBlock: BigInt(deployment.contracts.BursarVault.block),
   token: getAddress(deployment.contracts.MockUSDG.address),
   factory: getAddress(deployment.contracts.BursarFactory.address),
+  factoryDeployBlock: BigInt(deployment.contracts.BursarFactory.block),
   demoAgent: getAddress(deployment.demo.agent.address),
 };
 
@@ -36,3 +38,10 @@ export const client = createPublicClient({
 
 export const addressUrl = (a: Address) => `${EXPLORER}/address/${a}`;
 export const txUrl = (h: string) => `${EXPLORER}/tx/${h}`;
+
+export const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000" as Address;
+
+export function parseAddress(value: string | null | undefined): Address | null {
+  const v = value?.trim();
+  return v && isAddress(v) ? getAddress(v) : null;
+}

@@ -160,3 +160,90 @@
     margin-top: var(--space-6);
   }
 }
+
+/* ------------------------------------------------------------------ Stage B additions */
+
+.dash-header__left {
+  min-width: 0;
+}
+.dash-header__brand {
+  text-decoration: none;
+  display: inline-block;
+}
+.dash-header__brand:hover {
+  background: var(--c-lime);
+  color: var(--c-black);
+}
+.dash-nav {
+  display: flex;
+  gap: var(--space-4);
+  font-size: var(--fs-sm);
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.dash-nav a {
+  color: #fff;
+  text-decoration: none;
+  border-bottom: 2px solid transparent;
+}
+.dash-nav a:hover,
+.dash-nav a[aria-current="page"] {
+  background: none;
+  color: var(--c-lime);
+  border-bottom-color: var(--c-lime);
+}
+.dash-header .wallet-account {
+  color: #fff;
+}
+.dash-header .ds-button {
+  border-color: var(--c-lime);
+}
+.vault-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+  margin-bottom: var(--space-5);
+}
+.vault-picker .ds-input {
+  flex: 1 1 320px;
+  max-width: 560px;
+  font-size: var(--fs-sm);
+}
+.owner-grid {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr));
+  align-items: start;
+}
+.card-actions {
+  margin-top: var(--space-5);
+  padding-top: var(--space-4);
+  border-top: 3px solid var(--c-black);
+}
+.dash-list__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+.vault-action {
+  display: inline-grid;
+  gap: var(--space-1);
+  max-width: 100%;
+}
+.ds-actions--stack {
+  align-items: flex-start;
+}
+.form-error {
+  margin: 0;
+  color: #b00000;
+  font-weight: 700;
+  font-size: var(--fs-sm);
+}
+.rule {
+  border: 0;
+  border-top: 3px solid var(--c-black);
+  margin: var(--space-2) 0;
+  width: 100%;
+}
