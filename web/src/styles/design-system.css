@@ -140,7 +140,8 @@ h3 {
   max-height: calc(100vh - 2 * var(--space-5));
   overflow-y: auto;
 }
-.sidebar__brand {
+.sidebar__brand,
+.brand {
   display: flex;
   align-items: center;
   gap: var(--space-3);
@@ -150,10 +151,12 @@ h3 {
   font-weight: 700;
   letter-spacing: 0.02em;
 }
-.sidebar__brand:hover {
+.sidebar__brand:hover,
+.brand:hover {
   color: var(--c-ink);
 }
-.sidebar__logo {
+.sidebar__logo,
+.brand__logo {
   display: grid;
   place-items: center;
   width: 36px;
@@ -416,6 +419,29 @@ h3 {
 .ds-badge--dark {
   background: var(--c-ink);
   color: var(--c-white);
+}
+
+/* ================================================================== use-case label chips (from reason codes) */
+.usecase-chip {
+  display: inline-block;
+  margin-left: var(--space-2);
+  padding: 0 8px;
+  border: var(--bw-sm) solid var(--c-line);
+  border-radius: var(--radius-sm);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  line-height: 1.6;
+  vertical-align: middle;
+  background: var(--c-white);
+}
+.usecase-chip--data {
+  background: var(--c-sky);
+}
+.usecase-chip--subagent {
+  background: var(--c-mint);
+}
+.usecase-chip--human {
+  background: var(--c-pink);
 }
 
 /* ================================================================== buttons */

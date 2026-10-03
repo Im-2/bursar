@@ -9,11 +9,11 @@ import type { Address, Hex } from "viem";
 import { vaultAbi } from "../../abi";
 import { addressUrl, chain, DEPLOYMENT, txUrl, ZERO_ADDRESS } from "../../lib/chain";
 import { decodeBytes32, formatAgo, formatAmount, formatCountdown, formatDateTime, shortAddr, shortHash } from "../../lib/format";
-import { blockCauseLabel, useCaseFromReason } from "../../lib/labels";
+import { blockCauseLabel } from "../../lib/labels";
 import { useTx, type ContractCall } from "../../lib/tx";
 import type { FeedEvent, FeedEventName, VaultData } from "../../lib/useVault";
 import { useWallet } from "../../lib/wallet";
-import { Badge, Button, Card, EmptyState, IconBox, IconButton, KV, StatBox, type Tone } from "../ds";
+import { Badge, Button, Card, EmptyState, IconBox, IconButton, KV, StatBox, UseCaseChip, type Tone } from "../ds";
 import { ConfirmButton, TxStatusLine } from "../web3";
 
 // ---------------------------------------------------------------- context & helpers
@@ -507,11 +507,6 @@ function feedDetail(e: FeedEvent, d: VaultData): string {
     default:
       return [reason, to].filter(Boolean).join(" · ");
   }
-}
-
-export function UseCaseChip({ reason }: { reason: Hex | undefined }) {
-  const u = useCaseFromReason(reason);
-  return <span className={`usecase-chip usecase-chip--${u.kind}`}>{u.label}</span>;
 }
 
 export function Activity({ d }: { d: VaultData }) {

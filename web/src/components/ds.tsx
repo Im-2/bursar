@@ -1,5 +1,7 @@
 // Reusable design-system components (see styles/design-system.css). Presentation only, no data logic.
 import type { ReactNode } from "react";
+import type { Hex } from "viem";
+import { useCaseFromReason } from "../lib/labels";
 
 /** Status tones for chips. Black text on every tone keeps contrast high. */
 export type Tone = "ok" | "pending" | "blocked" | "info" | "neutral" | "dark";
@@ -185,4 +187,10 @@ export function Table<T>({ title, aside, columns, rows, rowKey, empty }: {
       )}
     </div>
   );
+}
+
+/** Labelled chip for what a payment was for, derived from its reason code (see lib/labels.ts). */
+export function UseCaseChip({ reason }: { reason: Hex | undefined }) {
+  const u = useCaseFromReason(reason);
+  return <span className={`usecase-chip usecase-chip--${u.kind}`}>{u.label}</span>;
 }

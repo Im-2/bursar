@@ -1,0 +1,459 @@
+/* Landing page ("/"). Builds on design-system.css tokens and components; only landing layout lives here. */
+
+.landing-frame {
+  margin: var(--space-5);
+  border: var(--bw) solid var(--c-line);
+  border-radius: 12px;
+  box-shadow: var(--shadow-lg);
+  background: var(--c-canvas);
+  overflow: clip;
+  min-height: calc(100vh - 2 * var(--space-5));
+}
+
+/* ================================================================== nav */
+
+.landing-nav {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--gutter);
+  border-bottom: var(--bw) solid var(--c-line);
+  background: var(--c-canvas);
+}
+.landing-nav__links {
+  display: flex;
+  gap: var(--space-2);
+}
+.landing-nav__link {
+  padding: var(--space-1) var(--space-3);
+  border: var(--bw-sm) solid transparent;
+  border-radius: var(--radius-sm);
+  color: var(--c-ink);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  text-decoration: none;
+}
+.landing-nav__link:hover {
+  border-color: var(--c-line);
+  background: var(--c-white);
+  color: var(--c-ink);
+}
+.landing-nav__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+.landing-nav__menu,
+.landing-nav__panel {
+  display: none;
+}
+
+@media (max-width: 900px) {
+  .landing-nav__links,
+  .landing-nav__actions {
+    display: none;
+  }
+  .landing-nav__menu {
+    display: inline-grid;
+  }
+  .landing-nav__panel[data-open="true"] {
+    display: grid;
+    gap: var(--space-4);
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    padding: var(--space-4) var(--gutter) var(--space-5);
+    border-bottom: var(--bw) solid var(--c-line);
+    background: var(--c-canvas);
+    box-shadow: 0 4px 0 var(--c-ink);
+  }
+  .landing-nav__panel-links {
+    display: grid;
+    gap: var(--space-1);
+  }
+  .landing-nav__panel-links .landing-nav__link {
+    padding: var(--space-2) var(--space-3);
+    font-size: var(--fs-md);
+  }
+  .landing-nav__panel-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+  }
+}
+
+/* ================================================================== hero */
+
+.landing-main {
+  padding: 0 var(--gutter) var(--space-7);
+}
+.landing-hero {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: clamp(32px, 6vw, 72px) 0 clamp(56px, 7vw, 88px);
+}
+.landing-hero__text {
+  display: grid;
+  justify-items: center;
+  text-align: center;
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+.landing-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-4);
+  border: var(--bw-sm) solid var(--c-line);
+  border-radius: 999px;
+  box-shadow: var(--shadow-sm);
+  background: var(--c-white);
+  font-size: var(--fs-sm);
+  font-weight: 700;
+}
+.landing-pill__dot {
+  width: 10px;
+  height: 10px;
+  border: var(--bw-sm) solid var(--c-line);
+  border-radius: 50%;
+  background: var(--c-ok);
+}
+
+.landing-hero__title {
+  margin-top: var(--space-5);
+  font-size: clamp(1.75rem, 5.2vw, 4rem);
+  line-height: 1.12;
+  letter-spacing: -0.03em;
+  font-weight: 700;
+  text-wrap: balance;
+}
+/* keeps the comma with the highlighted word */
+.landing-nowrap {
+  white-space: nowrap;
+}
+/* marker-style highlight: a rotated mustard block behind the word */
+.landing-mark {
+  position: relative;
+  display: inline-block;
+  padding: 0 0.18em;
+  z-index: 0;
+}
+.landing-mark::before {
+  content: "";
+  position: absolute;
+  inset: 0.08em -0.02em 0.02em;
+  z-index: -1;
+  background: var(--c-mustard);
+  border: var(--bw) solid var(--c-line);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-sm);
+  transform: rotate(-2.5deg);
+}
+
+.landing-hero__sub {
+  max-width: 64ch;
+  margin: var(--space-5) 0 0;
+  font-size: clamp(0.95rem, 1.3vw, 1.08rem);
+  text-wrap: pretty;
+}
+
+.landing-hero__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-3);
+  margin-top: var(--space-6);
+}
+.landing-cta {
+  min-height: 48px;
+  padding: var(--space-2) var(--space-5);
+  font-size: var(--fs-md);
+}
+
+.landing-proof {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-3);
+  margin: var(--space-5) 0 0;
+  padding: 0;
+  list-style: none;
+}
+.landing-proof__link {
+  text-decoration: none;
+}
+.landing-proof__link:hover {
+  color: var(--c-ink);
+  background: var(--c-white);
+}
+
+/* ================================================================== illustration + notes */
+
+.landing-art {
+  position: relative;
+  max-width: 1040px;
+  margin: clamp(40px, 6vw, 72px) auto 0;
+}
+.landing-art__card {
+  padding: clamp(12px, 2.5vw, 28px);
+  box-shadow: var(--shadow-lg);
+}
+.scene {
+  display: block;
+  width: 100%;
+  height: auto;
+  stroke: var(--c-ink);
+  stroke-width: 4;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+.scene text {
+  stroke: none;
+  fill: var(--c-ink);
+  font-family: var(--font-mono);
+  font-weight: 700;
+}
+.scene .f-none { fill: none; }
+.scene .f-ink { fill: var(--c-ink); }
+.scene .f-white { fill: var(--c-white); }
+.scene .f-mint { fill: var(--c-mint); }
+.scene .f-mustard { fill: var(--c-mustard); }
+.scene .f-pink { fill: var(--c-pink); }
+.scene .f-sky { fill: var(--c-sky); }
+.scene .f-ok { fill: var(--c-ok); }
+.scene .f-pending { fill: var(--c-pending); }
+
+.landing-note {
+  --rot: 0deg;
+  max-width: 240px;
+  padding: var(--space-3) var(--space-4);
+  border: var(--bw) solid var(--c-line);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow);
+  transform: rotate(var(--rot));
+}
+.landing-note__k {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+}
+.landing-note__v {
+  margin-top: 2px;
+  font-size: var(--fs-md);
+  font-weight: 700;
+  line-height: 1.3;
+}
+.landing-note__v .usecase-chip {
+  margin: var(--space-1) 0 0;
+  white-space: nowrap;
+  font-size: var(--fs-sm);
+}
+.landing-note__code {
+  display: block;
+  margin-top: var(--space-2);
+  font-family: inherit;
+  font-size: var(--fs-xs);
+  color: var(--c-ink);
+  opacity: 0.8;
+}
+.landing-note--mint {
+  --rot: -4deg;
+  background: var(--c-mint);
+}
+.landing-note--pink {
+  --rot: 3deg;
+  background: var(--c-pink);
+}
+.landing-note--mustard {
+  --rot: -2deg;
+  background: var(--c-mustard);
+}
+
+/* tablet and up: notes overlap the card edges like sticky notes */
+@media (min-width: 768px) {
+  .landing-note {
+    position: absolute;
+    z-index: 2;
+  }
+  .landing-note--mint {
+    top: -30px;
+    left: -18px;
+  }
+  .landing-note--pink {
+    top: -26px;
+    right: -16px;
+  }
+  .landing-note--mustard {
+    bottom: -40px;
+    left: 34%;
+  }
+}
+@media (min-width: 768px) and (max-width: 1100px) {
+  .landing-note {
+    max-width: 200px;
+    padding: var(--space-2) var(--space-3);
+  }
+  .landing-note__v {
+    font-size: var(--fs-sm);
+  }
+  .landing-note--mint {
+    left: -8px;
+  }
+  .landing-note--pink {
+    right: -8px;
+  }
+  /* hang mostly below the card so it stays clear of the vault's gauge */
+  .landing-note--mustard {
+    max-width: 240px;
+    bottom: -84px;
+    left: 30%;
+  }
+  .landing-hero {
+    padding-bottom: 120px;
+  }
+}
+/* phones: notes stack under the card so they never cover the headline or the art */
+@media (max-width: 767px) {
+  .landing-notes {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr));
+    gap: var(--space-4);
+    margin-top: var(--space-5);
+    padding: 0 var(--space-1);
+  }
+  .landing-note {
+    max-width: none;
+    --rot: 0deg;
+  }
+  .landing-note--mint {
+    --rot: -1.5deg;
+  }
+  .landing-note--pink {
+    --rot: 1.5deg;
+  }
+}
+
+/* ================================================================== idle motion (opt-in) */
+
+@media (prefers-reduced-motion: no-preference) {
+  .landing-note {
+    animation: landing-float 6s ease-in-out infinite;
+  }
+  .landing-note--pink {
+    animation-duration: 7s;
+    animation-delay: -2s;
+  }
+  .landing-note--mustard {
+    animation-duration: 6.5s;
+    animation-delay: -4s;
+  }
+  .scene__travel {
+    animation: scene-travel 4.2s ease-in-out infinite;
+  }
+  .scene__bounce {
+    animation: scene-bounce 2.4s ease-in-out infinite;
+  }
+  .scene__stamp {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: scene-wobble 3s ease-in-out infinite;
+  }
+}
+@keyframes landing-float {
+  0%,
+  100% {
+    transform: rotate(var(--rot)) translateY(0);
+  }
+  50% {
+    transform: rotate(var(--rot)) translateY(-6px);
+  }
+}
+/* points sampled from the dashed quadratic path M624 190 Q700 90 770 176 */
+@keyframes scene-travel {
+  0% {
+    transform: translate(624px, 190px);
+    opacity: 0;
+  }
+  10% {
+    transform: translate(640px, 172px);
+    opacity: 1;
+  }
+  30% {
+    transform: translate(670px, 147px);
+  }
+  50% {
+    transform: translate(698px, 136px);
+  }
+  70% {
+    transform: translate(728px, 142px);
+  }
+  88% {
+    transform: translate(760px, 166px);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(770px, 176px);
+    opacity: 0;
+  }
+}
+@keyframes scene-bounce {
+  0%,
+  100% {
+    transform: translate(0, 0) rotate(0deg);
+  }
+  50% {
+    transform: translate(-16px, -12px) rotate(-18deg);
+  }
+}
+@keyframes scene-wobble {
+  0%,
+  100% {
+    transform: rotate(-2deg);
+  }
+  50% {
+    transform: rotate(3deg);
+  }
+}
+
+/* ================================================================== placeholder sections */
+
+.landing-section {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: var(--space-6) 0;
+  scroll-margin-top: 88px;
+}
+
+@media (max-width: 900px) {
+  .landing-frame {
+    margin: 0;
+    border-width: 0;
+    border-radius: 0;
+    box-shadow: none;
+    min-height: 100vh;
+  }
+}
+@media (max-width: 600px) {
+  .landing-main {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+  .landing-nav {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+  .landing-cta {
+    width: 100%;
+  }
+  .landing-hero__actions {
+    width: 100%;
+  }
+}

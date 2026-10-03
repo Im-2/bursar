@@ -294,28 +294,6 @@
   opacity: 0.8;
 }
 
-/* use-case label chips (from reason codes) */
-.usecase-chip {
-  display: inline-block;
-  margin-left: var(--space-2);
-  padding: 0 8px;
-  border: var(--bw-sm) solid var(--c-line);
-  border-radius: var(--radius-sm);
-  font-size: var(--fs-xs);
-  font-weight: 600;
-  line-height: 1.6;
-  vertical-align: middle;
-  background: var(--c-white);
-}
-.usecase-chip--data {
-  background: var(--c-sky);
-}
-.usecase-chip--subagent {
-  background: var(--c-mint);
-}
-.usecase-chip--human {
-  background: var(--c-pink);
-}
 .item-card__label .usecase-chip {
   margin-left: 0;
 }
