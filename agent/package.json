@@ -1,0 +1,25 @@
+{
+  "name": "bursar-agent-demo",
+  "private": true,
+  "type": "module",
+  "description": "Demo AI agent and owner scripts for the Bursar vault on Arbitrum Sepolia",
+  "scripts": {
+    "status": "tsx src/status.ts",
+    "agent": "tsx src/agent-demo.ts",
+    "owner": "tsx src/owner.ts",
+    "owner:dry": "tsx src/owner.ts --dry-run",
+    "abi": "tsx src/gen-abi.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "engines": {
+    "node": ">=20.12"
+  },
+  "dependencies": {
+    "viem": "^2.57.2"
+  },
+  "devDependencies": {
+    "@types/node": "^24.19.1",
+    "tsx": "^4.23.15",
+    "typescript": "^5.9.3"
+  }
+}
