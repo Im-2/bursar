@@ -96,9 +96,84 @@ for (const w of [1440, 1024, 768, 390]) {
   if (extraDir) await page.screenshot(`${extraDir}/landing-hero-${w}.png`, { fullPage: false });
   await page.setViewport(w, 900);
 
-  for (const [sel, name] of [["#problem", "problem"], ["#how-it-works", "how"], ["#features", "features"], ["#showcase", "showcase"]]) {
+  // nothing sticks out past the viewport, and no section's content runs into the next section
+  const stray = await page.evaluate(`[...document.querySelectorAll('.landing-frame *')].filter((el) => { const r = el.getBoundingClientRect(); return r.width > 0 && (r.right > innerWidth + 0.5 || r.left < -0.5); }).map((el) => el.className.baseVal ?? el.className).slice(0, 5)`);
+  assert(stray.length === 0, `no element extends past the viewport${stray.length ? ": " + stray.join(", ") : ""}`);
+  const bleed = await page.evaluate(`(() => { const secs = [...document.querySelectorAll('main > section'), document.querySelector('.landing-footer')]; const out = [];
+    secs.forEach((sec, i) => { const next = secs[i + 1]; if (!next) return; const top = next.getBoundingClientRect().top;
+      const deepest = Math.max(...[...sec.querySelectorAll('*')].filter((el) => !el.closest('[inert]')).map((el) => el.getBoundingClientRect().bottom));
+      if (deepest > top + 0.5) out.push(sec.id || sec.className); }); return out; })()`);
+  assert(bleed.length === 0, `no section overlaps the next one${bleed.length ? ": " + bleed.join(", ") : ""}`);
+
+  if (tag) {
+    await page.evaluate("window.scrollTo(0, 0)");
+    await page.screenshot(toPath(new URL(`landing-full-${tag}.png`, SHOTS)), { fullPage: true, scale: 1 });
+  }
+
+  for (const [sel, name] of [["#problem", "problem"], ["#how-it-works", "how"], ["#features", "features"], ["#showcase", "showcase"], ["#faq", "faq"], [".landing-footer", "footer"]]) {
     if (tag) await shotSection(page, w, sel, toPath(new URL(`landing-${name}-${tag}.png`, SHOTS)));
     if (extraDir) await shotSection(page, w, sel, `${extraDir}/landing-${name}-${w}.png`);
+  }
+
+  if (w === 1440) {
+    // ------------------------------------------------ FAQ: tabs pattern + accordion, driven by real key presses
+    const tabState = () => page.evaluate(`[[...document.querySelectorAll('[role=tab]')].map((t) => t.getAttribute('aria-selected') + ':' + t.tabIndex).join(' '), document.activeElement.textContent, document.querySelector('[role=tabpanel]').getAttribute('aria-labelledby'), [...document.querySelectorAll('.landing-faq [aria-expanded]')].map((b) => b.getAttribute('aria-expanded')).join(',')]`);
+    let t = await tabState();
+    assert(t[0] === "true:0 false:-1 false:-1" && t[2] === "faq-tab-basics" && t[3] === "true,false,false", "FAQ starts on Basics with its first item open (roving tabindex)");
+    await page.evaluate("document.querySelector('[role=tab]').focus()");
+    await page.press("ArrowRight");
+    t = await tabState();
+    assert(t[0] === "false:-1 true:0 false:-1" && t[1] === "Safety" && t[2] === "faq-tab-safety" && t[3] === "true,false,false", "ArrowRight moves focus and selection to Safety; its first item is open");
+    await page.press("End");
+    t = await tabState();
+    assert(t[1] === "Build" && t[2] === "faq-tab-build", "End jumps to Build");
+    await page.press("ArrowRight");
+    t = await tabState();
+    assert(t[1] === "Basics", "ArrowRight wraps around to Basics");
+    await page.press("ArrowLeft");
+    t = await tabState();
+    assert(t[1] === "Build", "ArrowLeft wraps back to Build");
+    await page.press("Tab");
+    const focusedQ = await page.evaluate("document.activeElement.getAttribute('aria-expanded') + '|' + document.activeElement.textContent");
+    assert(focusedQ.startsWith("true|Which network"), "Tab from the tab list lands on the first question");
+    await page.press("Enter");
+    t = await tabState();
+    assert(t[3] === "false,false,false", "Enter collapses the open item");
+    await page.press(" ");
+    t = await tabState();
+    assert(t[3] === "true,false,false", "Space expands it again");
+    await page.press("Tab");
+    await page.press("Enter");
+    t = await tabState();
+    assert(t[3] === "false,true,false", "opening another item closes the first (one open at a time)");
+    await sleep(400);
+    const answer = await page.evaluate(`(() => { const b = document.querySelector('.landing-faq [aria-expanded=true]'); const a = document.getElementById(b.getAttribute('aria-controls'));
+      const closed = document.getElementById(document.querySelector('.landing-faq [aria-expanded=false]').getAttribute('aria-controls'));
+      return [a.getAttribute('role'), a.getAttribute('aria-labelledby') === b.id, a.offsetHeight > 20, closed.inert, closed.offsetHeight]; })()`);
+    assert(answer[0] === "region" && answer[1] && answer[2] && answer[3] === true && answer[4] === 0, "answers are labelled regions; closed answers are collapsed and inert");
+
+    // ------------------------------------------------ footer links
+    const ext = await page.evaluate(`[...document.querySelectorAll('.landing-footer a[target=_blank]')].map((a) => a.href + ' ' + a.rel)`);
+    const want = ["https://github.com/Im-2/bursar", "https://sepolia.arbiscan.io/address/0x822Cb3724d64870F6659ceca26534de8f5BD3840", "https://github.com/Im-2/bursar#readme", "https://x.com/Nuelcrypt", "https://github.com/Im-2"];
+    assert(ext.length === want.length && want.every((u, i) => ext[i] === `${u} noopener noreferrer`), "footer external links are correct and open in a new tab with noopener noreferrer");
+    const internal = await page.evaluate(`[...document.querySelectorAll('.landing-footer a:not([target])')].map((a) => a.getAttribute('href')).join(' ')`);
+    assert(internal === "/ /dashboard /try #how-it-works #features", `footer internal links (${internal})`);
+
+    // ------------------------------------------------ keyboard: every visible control is reachable and shows a focus ring
+    await page.evaluate("window.scrollTo(0, 0); document.activeElement.blur()");
+    const expected = await page.evaluate(`(() => { const els = [...document.querySelectorAll('a[href], button')].filter((el) => el.getClientRects().length && !el.closest('[inert]') && !el.closest('[hidden]') && el.tabIndex >= 0);
+      els.forEach((el, i) => (el.dataset.kb = i)); return els.length; })()`);
+    const seen = new Set();
+    const noRing = [];
+    for (let i = 0; i < expected + 5; i++) {
+      await page.press("Tab");
+      const f = await page.evaluate(`(() => { const el = document.activeElement; const cs = getComputedStyle(el); return [el.dataset?.kb ?? null, cs.outlineStyle !== 'none' && parseFloat(cs.outlineWidth) >= 2, el.textContent.trim().slice(0, 30)]; })()`);
+      if (f[0] === null) continue;
+      seen.add(f[0]);
+      if (!f[1]) noRing.push(f[2]);
+    }
+    assert(seen.size === expected, `all ${expected} visible links and buttons are reachable with Tab (${seen.size})`);
+    assert(noRing.length === 0, `every focused control shows a visible focus ring${noRing.length ? ": missing on " + noRing.join(", ") : ""}`);
   }
 
   if (w === 1440 || w === 390) {
@@ -119,6 +194,7 @@ for (const w of [1440, 1024, 768, 390]) {
     await page.goto(`${APP}/no-such-page`);
     await page.waitFor("!!document.querySelector('.landing-hero')", { label: "landing after unknown route" });
     assert((await page.evaluate("location.pathname")) === "/", "unknown route redirects to /");
+    assert(page.consoleIssues.length === 0, `no console errors or warnings on /, /dashboard, /try${page.consoleIssues.length ? ":\n    " + page.consoleIssues.join("\n    ") : ""}`);
   }
   await page.close();
 }

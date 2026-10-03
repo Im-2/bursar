@@ -693,6 +693,187 @@
   }
 }
 
+/* ---------------------------------------------------------------- FAQ */
+.landing-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-3);
+  margin-top: var(--space-6);
+}
+.landing-tab {
+  min-height: 40px;
+  padding: var(--space-1) var(--space-5);
+  border: var(--bw-sm) solid var(--c-line);
+  border-radius: 999px;
+  background: var(--c-white);
+  color: var(--c-ink);
+  font: inherit;
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  cursor: pointer;
+}
+.landing-tab:hover {
+  background: var(--c-canvas);
+}
+.landing-tab[aria-selected="true"] {
+  background: var(--c-mustard);
+  box-shadow: var(--shadow-sm);
+}
+.landing-faq {
+  display: grid;
+  gap: var(--space-4);
+  max-width: 880px;
+  margin: var(--space-5) auto 0;
+}
+.landing-faq__item {
+  border: var(--bw) solid var(--c-line);
+  border-radius: var(--radius);
+  background: var(--c-white);
+  box-shadow: var(--shadow);
+}
+.landing-faq__item[data-open="true"] {
+  background: var(--c-mint);
+}
+.landing-faq__q {
+  font-size: var(--fs-md);
+}
+.landing-faq__q button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  width: 100%;
+  padding: var(--space-4) var(--space-5);
+  border: 0;
+  border-radius: var(--radius);
+  background: none;
+  color: var(--c-ink);
+  font: inherit;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+.landing-faq__chev {
+  flex: none;
+}
+.landing-faq__item[data-open="true"] .landing-faq__chev {
+  transform: rotate(180deg);
+}
+/* height animation via a 0fr -> 1fr grid row */
+.landing-faq__a {
+  display: grid;
+  grid-template-rows: 0fr;
+}
+.landing-faq__item[data-open="true"] .landing-faq__a {
+  grid-template-rows: 1fr;
+}
+.landing-faq__a-inner {
+  overflow: hidden;
+  min-height: 0;
+}
+.landing-faq__a p {
+  margin: 0;
+  padding: 0 var(--space-5) var(--space-5);
+  max-width: 72ch;
+  font-size: var(--fs-sm);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .landing-faq__a {
+    transition: grid-template-rows 0.22s ease-out;
+  }
+  .landing-faq__chev {
+    transition: transform 0.22s ease-out;
+  }
+}
+@media (max-width: 600px) {
+  .landing-faq__q button {
+    padding: var(--space-3) var(--space-4);
+  }
+  .landing-faq__a p {
+    padding: 0 var(--space-4) var(--space-4);
+  }
+}
+
+/* ---------------------------------------------------------------- footer */
+.landing-footer {
+  padding: 0 var(--gutter) var(--space-6);
+}
+.landing-footer__card {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) repeat(3, minmax(0, 1fr));
+  gap: var(--space-5) var(--space-6);
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: clamp(20px, 4vw, 40px);
+  border: var(--bw) solid var(--c-line);
+  border-radius: var(--radius);
+  background: var(--c-mint);
+  box-shadow: var(--shadow-lg);
+}
+.landing-footer__brand {
+  display: grid;
+  align-content: start;
+  justify-items: start;
+  gap: var(--space-2);
+}
+.landing-footer__tagline {
+  margin: var(--space-2) 0 0;
+  font-weight: 600;
+}
+.landing-footer__small {
+  margin: 0;
+  font-size: var(--fs-xs);
+}
+.landing-footer__head {
+  margin-bottom: var(--space-3);
+  font-size: var(--fs-sm);
+  font-weight: 700;
+}
+.landing-footer__list {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.landing-footer__link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--c-ink);
+  font-size: var(--fs-sm);
+  text-decoration: none;
+}
+.landing-footer__link:hover {
+  color: var(--c-ink);
+  text-decoration: underline;
+}
+.landing-footer__bottom {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding-top: var(--space-4);
+  border-top: var(--bw-sm) solid var(--c-line);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+}
+@media (max-width: 900px) {
+  .landing-footer__card {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .landing-footer__brand {
+    grid-column: 1 / -1;
+  }
+}
+@media (max-width: 600px) {
+  .landing-footer {
+    padding: 0 16px var(--space-5);
+  }
+  .landing-footer__card {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 @media (max-width: 900px) {
   .landing-frame {
     margin: 0;

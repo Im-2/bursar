@@ -145,12 +145,21 @@ export async function launch({ account, startChainId = 1, width = 1440, height =
     }
   }
 
+  // Console warnings/errors, uncaught exceptions and browser log errors, for "no console noise" checks.
+  const consoleIssues = [];
   ws.addEventListener("message", async (m) => {
     const msg = JSON.parse(m.data);
     if (msg.id && pending.has(msg.id)) {
       pending.get(msg.id)(msg);
       pending.delete(msg.id);
       return;
+    }
+    if (msg.method === "Runtime.consoleAPICalled" && ["warning", "error", "assert"].includes(msg.params.type)) {
+      consoleIssues.push(`${msg.params.type}: ${msg.params.args.map((a) => a.value ?? a.description ?? "").join(" ")}`);
+    }
+    if (msg.method === "Runtime.exceptionThrown") consoleIssues.push(`exception: ${msg.params.exceptionDetails.exception?.description ?? msg.params.exceptionDetails.text}`);
+    if (msg.method === "Log.entryAdded" && ["warning", "error"].includes(msg.params.entry.level)) {
+      consoleIssues.push(`${msg.params.entry.level}: ${msg.params.entry.text} ${msg.params.entry.url ?? ""}`.trim());
     }
     if (msg.method === "Runtime.bindingCalled" && msg.params.name === "__wallet") {
       const { id, method, params, rdns } = JSON.parse(msg.params.payload);
@@ -169,6 +178,7 @@ export async function launch({ account, startChainId = 1, width = 1440, height =
   await send("Runtime.enable");
   await send("Runtime.addBinding", { name: "__wallet" });
   await send("Page.enable");
+  await send("Log.enable");
   await send("Page.addScriptToEvaluateOnNewDocument", { source: shim(TEST_WALLETS.slice(0, wallets)) });
   await send("Emulation.setDeviceMetricsOverride", { width, height, deviceScaleFactor: 1, mobile: width < 600 });
 
@@ -179,9 +189,19 @@ export async function launch({ account, startChainId = 1, width = 1440, height =
     return r.result.value;
   };
 
+  const KEYS = { Tab: 9, Enter: 13, " ": 32, ArrowLeft: 37, ArrowRight: 39, Home: 36, End: 35, Escape: 27 };
   const page = {
     wallet,
     evaluate,
+    consoleIssues,
+    /** Presses a key as a real (trusted) keyboard event on the focused element. */
+    async press(key, { shift = false } = {}) {
+      const code = key === " " ? "Space" : key;
+      const base = { key, code, windowsVirtualKeyCode: KEYS[key], nativeVirtualKeyCode: KEYS[key], modifiers: shift ? 8 : 0 };
+      await send("Input.dispatchKeyEvent", { type: "keyDown", ...base, ...(key === "Enter" ? { text: String.fromCharCode(13) } : key === " " ? { text: " " } : {}) });
+      await send("Input.dispatchKeyEvent", { type: "keyUp", ...base });
+      await sleep(120);
+    },
     /** Runs `action` (usually a click) and waits until the wallet has signed `count` new transactions and
      *  each one is mined successfully. Returns the tx hashes. */
     async signed(label, action, { count = 1, timeout = 120000 } = {}) {
@@ -264,10 +284,10 @@ export async function launch({ account, startChainId = 1, width = 1440, height =
       }
       throw new Error(`no tx result in ${scope}`);
     },
-    async screenshot(path, { fullPage = true } = {}) {
+    async screenshot(path, { fullPage = true, scale } = {}) {
       let h = height;
       if (fullPage) h = await evaluate("document.documentElement.scrollHeight");
-      await send("Emulation.setDeviceMetricsOverride", { width, height: h, deviceScaleFactor: width < 600 ? 2 : 1, mobile: width < 600 });
+      await send("Emulation.setDeviceMetricsOverride", { width, height: h, deviceScaleFactor: scale ?? (width < 600 ? 2 : 1), mobile: width < 600 });
       await sleep(600);
       const shot = await send("Page.captureScreenshot", { format: "png" });
       writeFileSync(path, Buffer.from(shot.data, "base64"));

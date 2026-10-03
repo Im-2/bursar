@@ -1,16 +1,15 @@
-// Landing page at "/". Built section by section; FAQ is a placeholder for now.
+// Landing page at "/": hero, problem, how it works, features, showcase, FAQ and footer.
 import { useEffect } from "react";
 import { useLocation } from "react-router-dom";
-import { SectionTitle } from "../components/ds";
+import { Faq } from "./Faq";
 import { Features } from "./Features";
+import { Footer } from "./Footer";
 import { Hero } from "./Hero";
 import { HowItWorks } from "./HowItWorks";
 import "./landing.css";
-import { LandingNav, SECTIONS } from "./LandingNav";
+import { LandingNav } from "./LandingNav";
 import { Problem } from "./Problem";
 import { Showcase } from "./Showcase";
-
-const PLACEHOLDERS = SECTIONS.filter((s) => s.id === "faq");
 
 export default function Landing() {
   const { hash } = useLocation();
@@ -37,15 +36,9 @@ export default function Landing() {
         <HowItWorks />
         <Features />
         <Showcase />
-        {PLACEHOLDERS.map((s) => (
-          <section key={s.id} id={s.id} className="landing-section" aria-labelledby={`${s.id}-title`}>
-            <SectionTitle title={s.label} id={`${s.id}-title`} />
-            <div className="empty-state">
-              <div className="ds-muted">This section is being built.</div>
-            </div>
-          </section>
-        ))}
+        <Faq />
       </main>
+      <Footer />
     </div>
   );
 }
