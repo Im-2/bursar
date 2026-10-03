@@ -1,0 +1,98 @@
+Bursar AI agent run (MCP) - Arbitrum Sepolia testnet, 2026-10-03 (UTC)
+========================================================================
+
+WHO WAS THE AGENT
+Claude (Claude Code desktop session, model Opus 5.5) acted as the agent. It talked to the
+Bursar MCP server (agent-mcp/src/server.ts) over stdio through the official MCP client SDK,
+one tool call at a time, using agent-mcp/scripts/call-tool.mjs. The standalone `claude` CLI
+in this environment was not logged in, so the --mcp-config route was not used for this run;
+the server, tools and on-chain behaviour are identical either way. No Anthropic API key was used.
+
+The agent never saw the private key: the server reads AGENT_PRIVATE_KEY from the gitignored
+.env, checks it belongs to the demo agent, and removes it from its environment.
+
+Vault  0x822Cb3724d64870F6659ceca26534de8f5BD3840 (v2)
+Agent  0x2ADbae68aA757811b3c4f29CE55873Fe5A800E07
+Token  MockUSDG (mUSDG) 0xF7a631d39aFE37290A500Edcae7C64aA19Ed8524 - a mock, not real USDG
+
+TASK GIVEN TO THE AGENT
+  Use the bursar tools. Check your policy and budget and list the vendors. Buy one call from
+  the data API at its listed price (DATA_MARKET_PRICES), then a 75 mUSDG bulk order
+  (DATA_BULK_ORDER), then try a 150 mUSDG premium dataset (DATA_PREMIUM_DATASET). Don't work
+  around any limit; report what the vault did each time, then re-check the budget.
+
+TOOL CALLS AND RESULTS (verbatim server output)
+
+--- 1. 2026-10-03T14:36:43.973Z  get_policy_and_budget {}
+Agent 0x2ADbae68aA757811b3c4f29CE55873Fe5A800E07 on vault 0x822Cb3724d64870F6659ceca26534de8f5BD3840 (Arbitrum Sepolia, testnet, mock token mUSDG)
+Status: active
+Role: DEMO
+Per-transaction cap: 100 mUSDG (larger payments are BLOCKED and logged)
+Approval threshold: 50 mUSDG (larger payments are QUEUED for the owner)
+Daily cap: 500 mUSDG; spent today (UTC): 65 mUSDG; left today: 435 mUSDG
+Task 0x2db36bc1effc8eeecdfa0b6cbad4be7d0b2fb08ed8f8b0cbd215b0e3641aade2: open, 860 mUSDG left of 1000 mUSDG, expires 2026-10-10T11:30:24.000Z
+Vault balance: 9860 mUSDG; agent gas: 0.001951511644738 ETH
+Allowlist enforced:
+  - Data API (simulated) 0xE5843118b8E82Fa58fe2d022128a55527C3a5f1B: allowlisted
+  - Research sub-agent (simulated) 0xc6D1f61Db88a207d1Ee37cE1C6b2A7Ca0b9731Ae: not allowlisted (a direct pay would be queued for approval)
+  - Human reviewer (simulated) 0x4526144B69a6380818B8b118E4F383e0523E1B28: not allowlisted (a direct pay would be queued for approval)
+
+--- 2. 2026-10-03T14:36:52.873Z  list_vendors {}
+Simulated vendors (testnet; the services are made up, the addresses are real and controlled by the Bursar team):
+- data-api: Data API (simulated)
+  address 0xE5843118b8E82Fa58fe2d022128a55527C3a5f1B
+  price 20 mUSDG
+  how to pay: pay directly with `pay` (it is on the agent's allowlist)
+  reason code prefix: DATA_ or API_
+- sub-agent: Research sub-agent (simulated)
+  address 0xc6D1f61Db88a207d1Ee37cE1C6b2A7Ca0b9731Ae
+  price 60 mUSDG
+  how to pay: hire with `create_escrow`; the vault owner releases payment after the work
+  reason code prefix: SUBAGENT_
+- human-reviewer: Human reviewer (simulated)
+  address 0x4526144B69a6380818B8b118E4F383e0523E1B28
+  price 40 mUSDG
+  how to pay: pay a bounty with `create_escrow`; the vault owner releases it on approval
+  reason code prefix: HUMAN_ or BOUNTY_
+
+--- 3. 2026-10-03T14:37:03.967Z  pay {"recipient": "data-api", "amount": "20", "reason": "DATA_MARKET_PRICES"}
+PAID: 20 mUSDG to Data API (simulated) (0xE5843118b8E82Fa58fe2d022128a55527C3a5f1B).
+Tx: 0x70ca5c2f03bdb9088ea9a871be2701597f2d2a29f407bf4842f23426c7096478
+Arbiscan: https://sepolia.arbiscan.io/tx/0x70ca5c2f03bdb9088ea9a871be2701597f2d2a29f407bf4842f23426c7096478
+
+--- 4. 2026-10-03T14:37:16.556Z  pay {"recipient": "data-api", "amount": "75", "reason": "DATA_BULK_ORDER"}
+QUEUED FOR APPROVAL: request #2 for 75 mUSDG to Data API (simulated), because the amount is above the approval threshold. No funds moved; the vault owner must approve or reject it.
+Tx: 0xb0866e8522628d549aeb09c1cd7bf4572f9c66afbe960078cddf97893d4bcf4a
+Arbiscan: https://sepolia.arbiscan.io/tx/0xb0866e8522628d549aeb09c1cd7bf4572f9c66afbe960078cddf97893d4bcf4a
+
+--- 5. 2026-10-03T14:37:28.911Z  pay {"recipient": "data-api", "amount": "150", "reason": "DATA_PREMIUM_DATASET"}
+BLOCKED: 150 mUSDG to Data API (simulated) is over the per-tx cap. The vault refused it and logged PaymentBlocked; no funds moved.
+This is a successful transaction: Arbiscan shows Status: Success with the PaymentBlocked event in its logs.
+Tx: 0x528e2fba55b9cec081910ade4cb85b38ec8365e89e334a13225e0000cc0f3ebc
+Arbiscan: https://sepolia.arbiscan.io/tx/0x528e2fba55b9cec081910ade4cb85b38ec8365e89e334a13225e0000cc0f3ebc
+
+--- 6. 2026-10-03T14:38:01.045Z  get_policy_and_budget {}
+Agent 0x2ADbae68aA757811b3c4f29CE55873Fe5A800E07 on vault 0x822Cb3724d64870F6659ceca26534de8f5BD3840 (Arbitrum Sepolia, testnet, mock token mUSDG)
+Status: active
+Role: DEMO
+Per-transaction cap: 100 mUSDG (larger payments are BLOCKED and logged)
+Approval threshold: 50 mUSDG (larger payments are QUEUED for the owner)
+Daily cap: 500 mUSDG; spent today (UTC): 85 mUSDG; left today: 415 mUSDG
+Task 0x2db36bc1effc8eeecdfa0b6cbad4be7d0b2fb08ed8f8b0cbd215b0e3641aade2: open, 840 mUSDG left of 1000 mUSDG, expires 2026-10-10T11:30:24.000Z
+Vault balance: 9840 mUSDG; agent gas: 0.001936781623704 ETH
+Allowlist enforced:
+  - Data API (simulated) 0xE5843118b8E82Fa58fe2d022128a55527C3a5f1B: allowlisted
+  - Research sub-agent (simulated) 0xc6D1f61Db88a207d1Ee37cE1C6b2A7Ca0b9731Ae: not allowlisted (a direct pay would be queued for approval)
+  - Human reviewer (simulated) 0x4526144B69a6380818B8b118E4F383e0523E1B28: not allowlisted (a direct pay would be queued for approval)
+
+SUMMARY - three transactions, all sent by the agent to the vault, all receipt status = success
+  1. PAID     20 mUSDG   0x70ca5c2f03bdb9088ea9a871be2701597f2d2a29f407bf4842f23426c7096478
+               logs: Transfer + PaymentExecuted
+  2. QUEUED   75 mUSDG   0xb0866e8522628d549aeb09c1cd7bf4572f9c66afbe960078cddf97893d4bcf4a
+               logs: PaymentQueued (request #2, above the 50 mUSDG approval threshold; no funds moved)
+  3. BLOCKED 150 mUSDG   0x528e2fba55b9cec081910ade4cb85b38ec8365e89e334a13225e0000cc0f3ebc
+               logs: PaymentBlocked (over the 100 mUSDG per-tx cap; no funds moved)
+Verified with `cast receipt` (status, from, to, event topics) after the run.
+Net effect: vault 9860 -> 9840 mUSDG, spent today 65 -> 85, task budget 860 -> 840.
+Request #2 stays pending until the owner approves or rejects it (dashboard Settings/Approvals,
+or `npm run owner` in agent/).

@@ -46,7 +46,7 @@ flowchart LR
     Agent -- "pay(taskId, recipient, amount, reason)" --> Policy
     Policy -- "within policy" --> Recipient
     Policy -- "above threshold or<br/>not allowlisted" --> Queue
-    Policy -. "over cap / budget:<br/>revert" .-> Agent
+    Policy -. "over cap / budget:<br/>blocked + PaymentBlocked logged" .-> Agent
     Owner -- "approve / reject" --> Queue
     Queue -- "approved" --> Recipient
     Agent -- "createEscrow" --> Escrow
@@ -89,6 +89,36 @@ These are real transactions from the run recorded in [`docs/demo-run.txt`](docs/
 - **Vault:** 10,000 → 9,860 mUSDG.
 - **Agent:** 65 of its 500 daily cap used (the approved 75 isn't counted).
 - **Task:** 860 of 1,000 left.
+
+### AI agent run (Claude over MCP)
+
+Claude, acting as the agent through the Bursar MCP server ([`agent-mcp/`](agent-mcp/README.md)), made these transactions. The full transcript is in [`docs/ai-agent-run.txt`](docs/ai-agent-run.txt):
+
+| Agent action | Transaction | Vault outcome |
+|---|---|---|
+| Buy data, 20 mUSDG (`DATA_MARKET_PRICES`) | [`0x70ca…6478`](https://sepolia.arbiscan.io/tx/0x70ca5c2f03bdb9088ea9a871be2701597f2d2a29f407bf4842f23426c7096478) | **Paid** (`PaymentExecuted`) |
+| Bulk order, 75 mUSDG (`DATA_BULK_ORDER`) | [`0xb086…cf4a`](https://sepolia.arbiscan.io/tx/0xb0866e8522628d549aeb09c1cd7bf4572f9c66afbe960078cddf97893d4bcf4a) | **Queued** as request #2 (above the 50 threshold) |
+| Premium dataset, 150 mUSDG (`DATA_PREMIUM_DATASET`) | [`0x528e…3ebc`](https://sepolia.arbiscan.io/tx/0x528e2fba55b9cec081910ade4cb85b38ec8365e89e334a13225e0000cc0f3ebc) | **Blocked** (`PaymentBlocked`, per-tx cap), no funds moved |
+
+---
+
+## Dashboard and playground
+
+A keyless web app is in [`web/`](web/README.md) (Vite, React, viem, wagmi). It reads the chain directly, and any write is signed by the user's own wallet (injected/EIP-6963, WalletConnect or Coinbase Wallet).
+
+- **Dashboard:** the vault's balance, agents, tasks, approval queue, escrows, and an activity feed that includes blocked attempts and config events. It has filters, use-case labels from reason-code prefixes, and a 7-day spend chart.
+- **Owner console:** the vault owner can approve or reject requests, release escrows, edit policies and pause the vault.
+- **Playground (`/try`):** create your own vault with the factory and run the paid, queued and blocked scenarios as real transactions.
+
+| Dashboard | Playground: a blocked payment | Wallet modal (phone) |
+|---|---|---|
+| ![Dashboard](docs/screenshots/dashboard-desktop.png) | ![Blocked](docs/screenshots/playground-blocked.png) | ![Wallet](docs/screenshots/wallet-modal-phone.png) |
+
+More screenshots are in [`docs/screenshots/`](docs/screenshots/).
+
+## USDG
+
+The live deployment uses MockUSDG. The official Paxos USDG testnet contract on Arbitrum Sepolia was checked on-chain (Global Dollar, 6 decimals). No real USDG payment has been tested, because the faucet couldn't be reached from this environment. Details are in [`docs/usdg-report.md`](docs/usdg-report.md).
 
 ---
 
@@ -220,14 +250,33 @@ npm run agent      # the 5-step agent story (signs with AGENT_PRIVATE_KEY from .
 npm run owner      # approve + release (signs with the Foundry keystore)
 ```
 
+### Run the AI agent (MCP)
+
+```bash
+cd agent-mcp
+npm install
+cd ..
+claude --mcp-config agent-mcp/.mcp.json
+```
+
+In Claude Code, check that `/mcp` lists `bursar`, then give it a task such as: *"Use the bursar tools. Check your policy and budget, list the vendors, then buy one call from the data API at its listed price with reason DATA_MARKET_PRICES."* To skip Claude Code, run a single tool call with `node agent-mcp/scripts/call-tool.mjs pay '{"recipient":"data-api","amount":"20","reason":"DATA_MARKET_PRICES"}'`. See [`agent-mcp/README.md`](agent-mcp/README.md).
+
+### Run the dashboard
+
+```bash
+cd web
+npm install
+npm run dev        # http://localhost:5173
+```
+
 ---
 
 ## Roadmap
 
 None of these are implemented yet:
 
-- **Dashboard:** a frontend for owners to fund vaults, set policies, open tasks, and review the approval queue and audit trail. The contracts' paginated view functions are built for it.
-- **Real USDG integration:** deploy against the real USDG address via `TOKEN_ADDRESS`, and validate against its actual token behavior.
+- **Real USDG integration:** deploy a vault for the real USDG testnet token and test payments with it (see [`docs/usdg-report.md`](docs/usdg-report.md)).
+- **Swaps and DeFi actions:** policy-checked actions beyond payments.
 - **ERC-4337 session keys:** agents get scoped, expiring session keys instead of long-lived EOAs.
 - **Multisig ownership:** a multisig such as Safe as the default vault owner, as the security assumptions already recommend.
 
@@ -238,6 +287,8 @@ src/            BursarVault, BursarFactory, mocks/MockUSDG
 test/           unit, adversarial, fuzz, invariant, script tests
 script/         Deploy.s.sol, Seed.s.sol
 agent/          TypeScript (viem) demo agent, owner and status scripts
+agent-mcp/      MCP server that gives an AI agent (e.g. Claude) the vault's pay/escrow tools
+web/            dashboard, owner console and playground (React, viem, wagmi)
 deployments/    arbitrum-sepolia.json (addresses, tx hashes, verification)
-docs/           DESIGN.md (design doc), demo-run.txt (live demo output)
+docs/           DESIGN.md, demo-run.txt, ai-agent-run.txt, usdg-report.md, screenshots/
 ```

@@ -1,6 +1,6 @@
 # Bursar agent over MCP (`agent-mcp/`)
 
-A small [MCP](https://modelcontextprotocol.io) server (TypeScript, official SDK, stdio) that lets an AI agent spend from the live Bursar demo vault on Arbitrum Sepolia. In the run documented here, **the agent is Claude, connected to this server through MCP in Claude Code**. No Anthropic API key is used: Claude Code runs on your normal Claude login.
+A small [MCP](https://modelcontextprotocol.io) server (TypeScript, official SDK, stdio) that lets an AI agent spend from the live Bursar demo vault on Arbitrum Sepolia. The agent is meant to be Claude, connected to this server through MCP in Claude Code (any MCP client works). No Anthropic API key is used: Claude Code runs on your normal Claude login.
 
 The point: the agent gets real spending power, and the vault contract still enforces the policy. The limits apply to any agent that holds this key, whether Claude, another model or a script.
 
@@ -51,6 +51,15 @@ npm install
 
    Or copy its `bursar` entry into a project-level `.mcp.json`. Check it's connected with `/mcp`. The tools appear as `mcp__bursar__pay` and so on.
 
+3. Without Claude Code, call one tool at a time with the official MCP client (from the repo root):
+
+   ```bash
+   node agent-mcp/scripts/call-tool.mjs get_policy_and_budget '{}'
+   node agent-mcp/scripts/call-tool.mjs pay '{"recipient":"data-api","amount":"20","reason":"DATA_MARKET_PRICES"}'
+   ```
+
+   An optional third argument appends each call and result to a JSONL transcript.
+
 ## Example prompts
 
 **1. A normal purchase run**
@@ -68,4 +77,4 @@ Expected: two **ESCROW LOCKED** results. The owner releases them later from the 
 
 Expected: **BLOCKED**, over the per-tx cap (100 mUSDG), logged on-chain as `PaymentBlocked`, with no funds moved.
 
-A prompt that combines a payment, a queued request and a blocked attempt, and its full transcript from a real run, is in [`docs/ai-agent-run.txt`](../docs/ai-agent-run.txt).
+A run that combines a payment, a queued request and a blocked attempt (Claude driving the server through `call-tool.mjs`), with its full transcript, is in [`docs/ai-agent-run.txt`](../docs/ai-agent-run.txt).
