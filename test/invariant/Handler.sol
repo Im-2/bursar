@@ -30,6 +30,8 @@ contract Handler is Test {
     /// @dev autonomous spend only (direct pay + escrow creation); approvals are excluded by design
     mapping(address agent => mapping(uint256 day => uint256)) public ghost_autoSpend;
     bool public ghost_dailyCapViolated;
+    uint256 public ghost_blocked; // pay() calls that returned (false, 0): limit violations logged as PaymentBlocked
+    bool public ghost_blockedMovedState;
     uint256 internal nonce;
 
     mapping(bytes4 => uint256) public calls;
@@ -146,16 +148,25 @@ contract Handler is Test {
         if (taskIds.length == 0) return;
         bytes32 id = _recentTask(taskSeed);
         address a = vault.getTask(id).agent;
-        // Two thirds of calls aim at the direct path (allowlisted, <= threshold); the rest may queue.
+        // Two thirds of calls aim at the direct path (allowlisted, <= threshold); the rest may queue, or go
+        // over the per-tx cap (up to 2x) so blocked attempts are exercised too.
         bool aimDirect = recipientSeed % 3 != 0;
         address to = aimDirect ? recipients[0] : recipients[(recipientSeed / 3) % recipients.length];
-        amount = bound(amount, 1, aimDirect ? THRESHOLD : PER_TX);
+        amount = bound(amount, 1, aimDirect ? THRESHOLD : 2 * uint256(PER_TX));
 
+        uint256 balBefore = token.balanceOf(address(vault));
+        uint256 requestsBefore = vault.requestCount();
         vm.prank(a);
-        (bool executed,) = vault.pay(id, to, amount, "INV");
+        (bool executed, uint256 requestId) = vault.pay(id, to, amount, "INV");
         if (executed) {
             ghost_paidOut += amount;
             _recordAutonomous(a, amount);
+        } else if (requestId == 0) {
+            // Blocked: must be a pure no-op (zero spend). Any movement trips the flag the invariants check.
+            ghost_blocked++;
+            if (token.balanceOf(address(vault)) != balBefore || vault.requestCount() != requestsBefore) {
+                ghost_blockedMovedState = true;
+            }
         }
     }
 

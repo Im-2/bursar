@@ -84,6 +84,48 @@ abstract contract BaseTest is Test {
         escrowId = vault.createEscrow(id, payee, amount, deadline, REASON);
     }
 
+    struct PayState {
+        uint256 vaultBal;
+        uint256 recipientBal;
+        uint256 reserved;
+        uint256 taskRemaining;
+        uint256 taskSpent;
+        uint256 spentToday;
+        uint256 requestCount;
+    }
+
+    function _payState(address a, bytes32 id, address to) internal view returns (PayState memory st) {
+        BursarVault.Task memory t = vault.getTask(id);
+        st = PayState({
+            vaultBal: token.balanceOf(address(vault)),
+            recipientBal: token.balanceOf(to),
+            reserved: vault.totalReserved(),
+            taskRemaining: t.remaining,
+            taskSpent: t.spent,
+            spentToday: vault.spentToday(a),
+            requestCount: vault.requestCount()
+        });
+    }
+
+    /// @dev pay() must log PaymentBlocked with `cause`, return (false, 0) and change nothing at all.
+    function _expectBlocked(address a, bytes32 id, address to, uint256 amount, BursarVault.BlockCause cause) internal {
+        PayState memory before = _payState(a, id, to);
+        vm.expectEmit(address(vault));
+        emit BursarVault.PaymentBlocked(a, id, to, amount, REASON, cause);
+        vm.prank(a);
+        (bool executed, uint256 requestId) = vault.pay(id, to, amount, REASON);
+        assertFalse(executed, "blocked: executed");
+        assertEq(requestId, 0, "blocked: request id");
+        PayState memory afterSt = _payState(a, id, to);
+        assertEq(afterSt.vaultBal, before.vaultBal, "blocked: vault balance");
+        assertEq(afterSt.recipientBal, before.recipientBal, "blocked: recipient balance");
+        assertEq(afterSt.reserved, before.reserved, "blocked: totalReserved");
+        assertEq(afterSt.taskRemaining, before.taskRemaining, "blocked: task remaining");
+        assertEq(afterSt.taskSpent, before.taskSpent, "blocked: task spent");
+        assertEq(afterSt.spentToday, before.spentToday, "blocked: daily spend");
+        assertEq(afterSt.requestCount, before.requestCount, "blocked: request created");
+    }
+
     function _sumOpenRemaining() internal view returns (uint256 sum) {
         for (uint256 i; i < trackedTasks.length; ++i) {
             BursarVault.Task memory t = vault.getTask(trackedTasks[i]);

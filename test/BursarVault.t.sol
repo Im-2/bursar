@@ -4,6 +4,7 @@ pragma solidity ^0.8.24;
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {Pausable} from "@openzeppelin/contracts/utils/Pausable.sol";
+import {Vm} from "forge-std/Vm.sol";
 import {BursarVault} from "../src/BursarVault.sol";
 import {BaseTest} from "./BaseTest.sol";
 
@@ -232,9 +233,7 @@ contract BursarVaultTest is BaseTest {
         vm.prank(owner);
         vault.setAgent(agent, _policy(200e6, 200e6, 200e6));
         assertEq(vault.remainingDailyAllowance(agent), 0);
-        vm.prank(agent);
-        vm.expectRevert(BursarVault.ExceedsDailyCap.selector);
-        vault.pay(TASK, recipient, 1, REASON);
+        _expectBlocked(agent, TASK, recipient, 1, BursarVault.BlockCause.DailyCap);
     }
 
     function test_revokeAgent() public {
@@ -689,9 +688,81 @@ contract BursarVaultTest is BaseTest {
         vault.pay(TASK, recipient, 0, REASON);
     }
 
-    function test_pay_revert_aboveperTxCap() public {
+    // ---------------------------------------------------------------- limit violations are logged, not reverted
+
+    function test_pay_blocked_aboveperTxCap() public {
+        _expectBlocked(agent, TASK, recipient, PER_TX + 1, BursarVault.BlockCause.PerTxCap);
+    }
+
+    function test_pay_blocked_hugeAmountIsLoggedNotTruncated() public {
+        // Far above uint128: must be blocked by the per-tx check before any uint128 cast.
+        _expectBlocked(agent, TASK, recipient, type(uint256).max, BursarVault.BlockCause.PerTxCap);
+    }
+
+    function test_pay_overCapOnInvalidTaskReverts() public {
+        // The task is validated before any limit: an over-cap attempt on a task the agent doesn't own, or one
+        // that is unknown, expired or closed, reverts and is never logged as PaymentBlocked.
+        vm.recordLogs();
         vm.prank(agent);
-        vm.expectRevert(BursarVault.ExceedsPerTxCap.selector);
+        vm.expectRevert(BursarVault.TaskNotOpen.selector);
+        vault.pay(TASK2, recipient, PER_TX + 1, REASON); // unknown task
+
+        _openTask(TASK2, agent2, 100e6, expiry);
+        vm.prank(agent);
+        vm.expectRevert(BursarVault.TaskAgentMismatch.selector);
+        vault.pay(TASK2, recipient, PER_TX + 1, REASON); // another agent's task
+
+        vm.warp(expiry);
+        vm.prank(agent);
+        vm.expectRevert(BursarVault.TaskExpired.selector);
+        vault.pay(TASK, recipient, PER_TX + 1, REASON); // expired task
+
+        vm.warp(START);
+        vm.prank(owner);
+        vault.closeTask(TASK);
+        vm.prank(agent);
+        vm.expectRevert(BursarVault.TaskNotOpen.selector);
+        vault.pay(TASK, recipient, type(uint256).max, REASON); // closed task, huge amount
+
+        bytes32 blockedTopic = BursarVault.PaymentBlocked.selector;
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+        for (uint256 i; i < logs.length; ++i) {
+            assertTrue(logs[i].topics[0] != blockedTopic, "no PaymentBlocked for an invalid task");
+        }
+    }
+
+    function test_pay_blocked_aboveThresholdAndOverCapIsNotQueued() public {
+        // Over the per-tx cap AND above the approval threshold AND not allowlisted: blocked, never queued.
+        _expectBlocked(agent, TASK, outsider, PER_TX + 1, BursarVault.BlockCause.PerTxCap);
+        assertEq(vault.requestCount(), 0);
+    }
+
+    function test_pay_blocked_doesNotConsumeDailyCapOrBudget() public {
+        vm.prank(owner);
+        vault.setAgent(agent, _policy(PER_TX, DAILY, PER_TX));
+        for (uint256 i; i < 4; ++i) {
+            _pay(agent, TASK, recipient, PER_TX); // 4,000 of 5,000 used
+        }
+        _expectBlocked(agent, TASK, recipient, PER_TX + 1, BursarVault.BlockCause.PerTxCap);
+        _expectBlocked(agent, TASK, recipient, PER_TX + 1, BursarVault.BlockCause.PerTxCap);
+        // The blocked attempts used nothing: the full remaining 1,000 is still spendable today.
+        assertEq(vault.remainingDailyAllowance(agent), PER_TX);
+        vm.prank(agent);
+        (bool executed,) = vault.pay(TASK, recipient, PER_TX, REASON);
+        assertTrue(executed);
+        assertEq(vault.spentToday(agent), DAILY);
+        _assertAccounting();
+    }
+
+    function test_pay_blocked_stillRevertsOnNonLimitErrors() public {
+        // Only the three limit checks were softened; everything else still reverts.
+        vm.prank(stranger);
+        vm.expectRevert(BursarVault.AgentInactive.selector);
+        vault.pay(TASK, recipient, PER_TX + 1, REASON);
+        vm.prank(owner);
+        vault.pause();
+        vm.prank(agent);
+        vm.expectRevert(Pausable.EnforcedPause.selector);
         vault.pay(TASK, recipient, PER_TX + 1, REASON);
     }
 
@@ -714,22 +785,33 @@ contract BursarVaultTest is BaseTest {
         vault.pay(TASK, recipient, 1e6, REASON);
     }
 
-    function test_pay_revert_exceedsTaskBudget() public {
+    function test_pay_blocked_exceedsTaskBudget() public {
         _openTask(TASK2, agent, 100e6, expiry);
-        vm.prank(agent);
-        vm.expectRevert(BursarVault.ExceedsTaskBudget.selector);
-        vault.pay(TASK2, recipient, 100e6 + 1, REASON);
+        _expectBlocked(agent, TASK2, recipient, 100e6 + 1, BursarVault.BlockCause.TaskBudget);
+        _assertAccounting();
     }
 
-    function test_pay_revert_exceedsDailyCap() public {
+    function test_pay_blocked_exceedsDailyCap() public {
         vm.prank(owner);
         vault.setAgent(agent, _policy(PER_TX, DAILY, PER_TX));
         for (uint256 i; i < 5; ++i) {
             _pay(agent, TASK, recipient, PER_TX);
         }
-        vm.prank(agent);
-        vm.expectRevert(BursarVault.ExceedsDailyCap.selector);
-        vault.pay(TASK, recipient, 1, REASON);
+        _expectBlocked(agent, TASK, recipient, 1, BursarVault.BlockCause.DailyCap);
+        _assertAccounting();
+    }
+
+    function test_pay_dailyCapOnlyBlocksTheDirectPath() public {
+        // Unchanged rule: a payment that would be queued is queued even when today's cap is used up.
+        vm.prank(owner);
+        vault.setAgent(agent, _policy(PER_TX, DAILY, THRESHOLD));
+        for (uint256 i; i < 10; ++i) {
+            _pay(agent, TASK, recipient, THRESHOLD); // 10 x 500 = daily cap
+        }
+        assertEq(vault.remainingDailyAllowance(agent), 0);
+        uint256 id = _pay(agent, TASK, recipient, THRESHOLD + 1); // above threshold -> queued, not blocked
+        assertEq(id, 1);
+        _expectBlocked(agent, TASK, recipient, 1, BursarVault.BlockCause.DailyCap);
     }
 
     // =====================================================================

@@ -34,12 +34,13 @@ contract BursarVaultFuzzTest is BaseTest {
                 spent = 0;
             }
 
-            vm.prank(agent);
             if (spent + amount > DAILY) {
-                vm.expectRevert(BursarVault.ExceedsDailyCap.selector);
-                vault.pay(BIG, recipient, amount, REASON);
+                // Logged and refused; counts as zero spend.
+                _expectBlocked(agent, BIG, recipient, amount, BursarVault.BlockCause.DailyCap);
             } else {
-                vault.pay(BIG, recipient, amount, REASON);
+                vm.prank(agent);
+                (bool executed,) = vault.pay(BIG, recipient, amount, REASON);
+                assertTrue(executed);
                 spent += amount;
             }
             assertEq(vault.spentToday(agent), spent);
@@ -57,42 +58,37 @@ contract BursarVaultFuzzTest is BaseTest {
         for (uint256 i; i < DAILY / PER_TX; ++i) {
             _pay(agent, BIG, recipient, PER_TX);
         }
-        vm.prank(agent);
-        vm.expectRevert(BursarVault.ExceedsDailyCap.selector);
-        vault.pay(BIG, recipient, 1, REASON);
+        _expectBlocked(agent, BIG, recipient, 1, BursarVault.BlockCause.DailyCap);
 
         vm.warp(nextMidnight);
         for (uint256 i; i < DAILY / PER_TX; ++i) {
             _pay(agent, BIG, recipient, PER_TX);
         }
         assertEq(token.balanceOf(recipient), 2 * uint256(DAILY));
-        vm.prank(agent);
-        vm.expectRevert(BursarVault.ExceedsDailyCap.selector);
-        vault.pay(BIG, recipient, 1, REASON);
+        _expectBlocked(agent, BIG, recipient, 1, BursarVault.BlockCause.DailyCap);
     }
 
-    /// @notice perTxCap is a hard ceiling for both pay and createEscrow, whatever the threshold.
+    /// @notice perTxCap is a hard ceiling for both pay (blocked + logged) and createEscrow (reverts), whatever the threshold.
     function testFuzz_perTxCap(uint256 amount, uint128 threshold) public {
         amount = bound(amount, 1, BUDGET);
         threshold = uint128(bound(threshold, 0, PER_TX));
         vm.prank(owner);
         vault.setAgent(agent, _policy(PER_TX, DAILY, threshold));
 
-        vm.prank(agent);
         if (amount > PER_TX) {
-            vm.expectRevert(BursarVault.ExceedsPerTxCap.selector);
-            vault.pay(TASK, recipient, amount, REASON);
+            _expectBlocked(agent, TASK, recipient, amount, BursarVault.BlockCause.PerTxCap);
             vm.prank(agent);
             vm.expectRevert(BursarVault.ExceedsPerTxCap.selector);
             vault.createEscrow(TASK, recipient, amount, expiry, REASON);
         } else {
+            vm.prank(agent);
             (bool executed,) = vault.pay(TASK, recipient, amount, REASON);
             assertEq(executed, amount <= threshold);
             assertEq(token.balanceOf(recipient), executed ? amount : 0);
         }
     }
 
-    /// @notice remaining + spent == budget throughout; overspending the task always reverts.
+    /// @notice remaining + spent == budget throughout; overspending is blocked (pay) or reverts (escrow).
     function testFuzz_taskBudgetAccounting(uint256 budget, uint256 seed, uint8 steps) public {
         budget = bound(budget, 1, 20_000e6);
         vm.prank(owner);
@@ -106,14 +102,20 @@ contract BursarVaultFuzzTest is BaseTest {
             bool useEscrow = uint256(keccak256(abi.encode(seed, i, "kind"))) % 2 == 0;
             uint256 remaining = budget - spent;
 
-            vm.prank(agent);
             if (amount > remaining) {
-                vm.expectRevert(BursarVault.ExceedsTaskBudget.selector);
+                if (useEscrow) {
+                    vm.prank(agent);
+                    vm.expectRevert(BursarVault.ExceedsTaskBudget.selector);
+                    vault.createEscrow(TASK2, outsider, amount, expiry, REASON);
+                } else {
+                    _expectBlocked(agent, TASK2, recipient, amount, BursarVault.BlockCause.TaskBudget);
+                }
             } else {
                 spent += amount;
+                vm.prank(agent);
+                if (useEscrow) vault.createEscrow(TASK2, outsider, amount, expiry, REASON);
+                else vault.pay(TASK2, recipient, amount, REASON);
             }
-            if (useEscrow) vault.createEscrow(TASK2, outsider, amount, expiry, REASON);
-            else vault.pay(TASK2, recipient, amount, REASON);
 
             BursarVault.Task memory t = vault.getTask(TASK2);
             assertEq(t.spent, spent);
@@ -126,6 +128,15 @@ contract BursarVaultFuzzTest is BaseTest {
         vm.prank(owner);
         vault.closeTask(TASK2);
         assertEq(vault.freeBalance(), freeBefore + (budget - spent));
+        _assertAccounting();
+    }
+
+    /// @notice Any amount above the per-tx cap, up to uint256 max, is logged as blocked with no state change
+    ///         (no truncating cast, no request, no spend).
+    function testFuzz_blockedAnyAmountChangesNothing(uint256 amount, bool allowlisted) public {
+        amount = bound(amount, uint256(PER_TX) + 1, type(uint256).max);
+        address to = allowlisted ? recipient : outsider;
+        _expectBlocked(agent, TASK, to, amount, BursarVault.BlockCause.PerTxCap);
         _assertAccounting();
     }
 

@@ -83,6 +83,13 @@ contract BursarVault is Ownable2Step, Pausable, ReentrancyGuard {
         Threshold
     }
 
+    /// @notice Why `pay` refused a payment without reverting (see PaymentBlocked).
+    enum BlockCause {
+        PerTxCap,
+        DailyCap,
+        TaskBudget
+    }
+
     // ---------------------------------------------------------------------
     // Storage
     // ---------------------------------------------------------------------
@@ -143,6 +150,11 @@ contract BursarVault is Ownable2Step, Pausable, ReentrancyGuard {
         uint256 amount,
         bytes32 reason,
         QueueCause cause
+    );
+    /// @notice A limit violation inside `pay`: logged instead of reverted so the attempt stays in the audit trail.
+    ///         No funds moved and no state changed.
+    event PaymentBlocked(
+        address indexed agent, bytes32 indexed taskId, address indexed recipient, uint256 amount, bytes32 reason, BlockCause cause
     );
     event RequestApproved(
         uint256 id, address indexed agent, bytes32 indexed taskId, address indexed recipient, uint256 amount, bytes32 reason
@@ -341,8 +353,22 @@ contract BursarVault is Ownable2Step, Pausable, ReentrancyGuard {
 
     /// @notice Spend from a task. Executes immediately if the recipient is allowed and
     ///         `amount <= approvalThreshold`; otherwise stores a pending request for the owner.
-    /// @return executed True if paid now, false if queued.
-    /// @return requestId Id of the queued request (0 if executed).
+    /// @dev Limit violations do NOT revert here: a reverted call leaves no on-chain record, so an over-limit
+    ///      attempt would be invisible in the audit trail. Instead `pay` emits PaymentBlocked and returns
+    ///      (false, 0) without changing any state or moving funds. The task is validated before any limit, so a
+    ///      PaymentBlocked entry always refers to an open task owned by the calling agent. Checks, in order:
+    ///        1. agent active, vault not paused, valid recipient, non-zero amount      -> revert
+    ///        2. task open, unexpired and owned by the agent                           -> revert
+    ///        3. amount > perTxCap                                                     -> blocked (PerTxCap)
+    ///        4. amount > task remaining                                               -> blocked (TaskBudget)
+    ///        5. recipient not allowlisted or amount > approvalThreshold               -> queued
+    ///        6. today's spend + amount > dailyCap                                     -> blocked (DailyCap)
+    ///        7. otherwise                                                             -> paid
+    ///      `createEscrow` keeps reverting on the same limits (ExceedsPerTxCap / ExceedsTaskBudget /
+    ///      ExceedsDailyCap): it is a deliberate lock-up, and a failed escrow has nothing useful to log.
+    /// @return executed True if paid now; false if queued or blocked.
+    /// @return requestId Id of the queued request; 0 if paid or blocked.
+    ///         So: (true, 0) = paid, (false, id > 0) = queued, (false, 0) = blocked.
     function pay(bytes32 taskId, address recipient, uint256 amount, bytes32 reason)
         external
         nonReentrant
@@ -352,9 +378,10 @@ contract BursarVault is Ownable2Step, Pausable, ReentrancyGuard {
         Policy memory p = _activePolicy(msg.sender);
         _validateRecipient(recipient);
         if (amount == 0) revert ZeroAmount();
-        if (amount > p.perTxCap) revert ExceedsPerTxCap(); // also guarantees amount fits in uint128
-        Task storage t = _usableTask(taskId, msg.sender);
-        if (amount > t.remaining) revert ExceedsTaskBudget();
+        Task storage t = _usableTask(taskId, msg.sender); // invalid, expired or foreign task: revert, never logged
+        if (amount > p.perTxCap) return _blocked(taskId, recipient, amount, reason, BlockCause.PerTxCap);
+        // From here amount <= perTxCap (a uint128), so the uint128 casts below are safe.
+        if (amount > t.remaining) return _blocked(taskId, recipient, amount, reason, BlockCause.TaskBudget);
 
         bool allowed = isRecipientAllowed(msg.sender, recipient);
         if (!allowed || amount > p.approvalThreshold) {
@@ -374,12 +401,23 @@ contract BursarVault is Ownable2Step, Pausable, ReentrancyGuard {
             return (false, requestId);
         }
 
-        _spendDaily(msg.sender, p.dailyCap, amount);
+        if (!_trySpendDaily(msg.sender, p.dailyCap, amount)) {
+            return _blocked(taskId, recipient, amount, reason, BlockCause.DailyCap);
+        }
         _debitTask(t, amount);
         totalReserved -= amount;
         token.safeTransfer(recipient, amount);
         emit PaymentExecuted(msg.sender, taskId, recipient, amount, reason);
         return (true, 0);
+    }
+
+    /// @dev Logs a refused payment. Writes no state, so it cannot consume budget, allowance or a request id.
+    function _blocked(bytes32 taskId, address recipient, uint256 amount, bytes32 reason, BlockCause cause)
+        private
+        returns (bool, uint256)
+    {
+        emit PaymentBlocked(msg.sender, taskId, recipient, amount, reason, cause);
+        return (false, 0);
     }
 
     // ---------------------------------------------------------------------
@@ -603,13 +641,21 @@ contract BursarVault is Ownable2Step, Pausable, ReentrancyGuard {
     ///      midnight (cap just before, cap again just after). A rolling window closes that gap but needs per-payment
     ///      history or a ring buffer, i.e. more storage, more gas and harder reasoning. Owners who need a tighter
     ///      bound should set dailyCap to half their true 24h tolerance.
-    function _spendDaily(address agent, uint256 dailyCap, uint256 amount) internal {
+    ///      Records the spend and returns true, or returns false and records nothing if it would exceed the cap.
+    ///      Callers pass amount <= perTxCap <= dailyCap (both uint128), so `spent + amount` cannot overflow.
+    function _trySpendDaily(address agent, uint256 dailyCap, uint256 amount) internal returns (bool) {
         uint64 today = uint64(block.timestamp / 1 days);
         DailySpend storage d = _dailySpend[agent];
         uint256 spent = d.day == today ? d.spent : 0;
-        if (spent + amount > dailyCap) revert ExceedsDailyCap();
+        if (spent + amount > dailyCap) return false;
         d.day = today;
         d.spent = uint128(spent + amount); // <= dailyCap, fits in uint128
+        return true;
+    }
+
+    /// @dev Reverting variant, used by createEscrow.
+    function _spendDaily(address agent, uint256 dailyCap, uint256 amount) internal {
+        if (!_trySpendDaily(agent, dailyCap, amount)) revert ExceedsDailyCap();
     }
 
     function _spentToday(address agent) internal view returns (uint256) {

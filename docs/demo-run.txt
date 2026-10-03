@@ -1,36 +1,38 @@
-Bursar live demo run — Arbitrum Sepolia (chain 421614)
-Run on 2026-10-03 UTC against vault 0x3bb637f613473ed4e4801220e4F7292e6b1949B6
+Bursar live demo run v2: Arbitrum Sepolia (chain 421614)
+Vault 0x822Cb3724d64870F6659ceca26534de8f5BD3840 (factory 0x8Ab9F56B8dE7dcB8F6FFAB2F02AF4E1A1cEcb7C2)
+A blocked attempt is a SUCCESSFUL transaction that emits PaymentBlocked: Arbiscan shows Status: Success with the event in the logs; no funds move.
 Amounts: mUSDG, 6 decimals. No keys or passwords appear in this file.
 
 TRANSACTIONS
 
-  Direct payment (25 mUSDG, allowlisted, <= threshold)
-    tx:     0xde3b81e1fec2230def5b84d605f6ef28bd4fdf54c8df07674edaeea683a62399
-    link:   https://sepolia.arbiscan.io/tx/0xde3b81e1fec2230def5b84d605f6ef28bd4fdf54c8df07674edaeea683a62399
-    proves: agent spends autonomously within policy
+  Direct payment (25 mUSDG)
+    tx:     0x1814efae9fa8b347fe9a5b66ef8cbc29897b8e4879e0ebf4017ef5f86982133b
+    link:   https://sepolia.arbiscan.io/tx/0x1814efae9fa8b347fe9a5b66ef8cbc29897b8e4879e0ebf4017ef5f86982133b
+    proves: paid autonomously within policy
 
-  Over-cap payment (150 mUSDG)
-    tx:     (none: blocked in simulation)
-    proves: ExceedsPerTxCap(); balances, task budget and nonce unchanged
+  Over-cap attempt (150 mUSDG)
+    tx:     0xcc2e8f1f4d32e45c1c9f94c6e14255ca29bb554fd116d3bb3e5f5cdd4921ade3
+    link:   https://sepolia.arbiscan.io/tx/0xcc2e8f1f4d32e45c1c9f94c6e14255ca29bb554fd116d3bb3e5f5cdd4921ade3
+    proves: PaymentBlocked (cause PerTxCap); Status: Success, nothing moved
 
   Above-threshold payment (75 mUSDG)
-    tx:     0xc214da380fea07774e20ffa383bba230b4f3188a1d788b2d01dc76efe5ff7b55
-    link:   https://sepolia.arbiscan.io/tx/0xc214da380fea07774e20ffa383bba230b4f3188a1d788b2d01dc76efe5ff7b55
-    proves: queued as request #1 instead of paying
+    tx:     0x0989779e0fd47aaf44ddf42e951ea7c8afdaaa71a06167b273b3ab143a0624e6
+    link:   https://sepolia.arbiscan.io/tx/0x0989779e0fd47aaf44ddf42e951ea7c8afdaaa71a06167b273b3ab143a0624e6
+    proves: queued as request #1
 
   Escrow created (40 mUSDG)
-    tx:     0x071a0195599584cd76003d2f9d7575d667921432d88f85e5feba4635ce3d70e4
-    link:   https://sepolia.arbiscan.io/tx/0x071a0195599584cd76003d2f9d7575d667921432d88f85e5feba4635ce3d70e4
-    proves: funds locked from the task budget for the payee
+    tx:     0xf06339be99ce43ee5e7775d8883d79ae6dc5fa3271c739f2779bbcde62b5a888
+    link:   https://sepolia.arbiscan.io/tx/0xf06339be99ce43ee5e7775d8883d79ae6dc5fa3271c739f2779bbcde62b5a888
+    proves: locked from the task budget
 
   Request #1 approved (owner)
-    tx:     0x36fe88ba2d83217988797e4aa88bcd3e1d210aeeafcb4f24daa1dfeb01836b42
-    link:   https://sepolia.arbiscan.io/tx/0x36fe88ba2d83217988797e4aa88bcd3e1d210aeeafcb4f24daa1dfeb01836b42
-    proves: human sign-off executes the queued payment
+    tx:     0xc591786009436b65dfee91ea3a50edf7efab6f843e8bfe7c64019d1f263a3341
+    link:   https://sepolia.arbiscan.io/tx/0xc591786009436b65dfee91ea3a50edf7efab6f843e8bfe7c64019d1f263a3341
+    proves: owner sign-off executes the queued payment
 
   Escrow #1 released (owner)
-    tx:     0x599c52fd40bbd4f2d35e9b142c0ac97dbb6e7250ecc87ad5bc4cf7e663790699
-    link:   https://sepolia.arbiscan.io/tx/0x599c52fd40bbd4f2d35e9b142c0ac97dbb6e7250ecc87ad5bc4cf7e663790699
+    tx:     0x7996fc4c5bc3f0478033f0a20702f75c0484b2dbd08ed2c3dd853dcd20543c2a
+    link:   https://sepolia.arbiscan.io/tx/0x7996fc4c5bc3f0478033f0a20702f75c0484b2dbd08ed2c3dd853dcd20543c2a
     proves: owner releases escrow to the payee
 
 ########################################################################
@@ -40,7 +42,7 @@ TRANSACTIONS
 ════════════════════════════════════════════════════════════
   Bursar vault status — Arbitrum Sepolia
 ════════════════════════════════════════════════════════════
-   vault                    https://sepolia.arbiscan.io/address/0x3bb637f613473ed4e4801220e4F7292e6b1949B6
+   vault                    https://sepolia.arbiscan.io/address/0x822Cb3724d64870F6659ceca26534de8f5BD3840
    owner                    0x4526144B69a6380818B8b118E4F383e0523E1B28
    token                    mUSDG (6 decimals) 0xF7a631d39aFE37290A500Edcae7C64aA19Ed8524
    paused                   false
@@ -61,7 +63,7 @@ TRANSACTIONS
 ── Step · Task "demo-task-1"
    task id                  0x2db36bc1effc8eeecdfa0b6cbad4be7d0b2fb08ed8f8b0cbd215b0e3641aade2
    open                     true
-   expires                  2026-10-09T22:32:02.000Z
+   expires                  2026-10-10T11:30:24.000Z
    remaining budget         1000 mUSDG (1000000000 base units)
    spent                    0 mUSDG (0 base units)
 
@@ -79,10 +81,10 @@ TRANSACTIONS
   Bursar demo — an AI agent spending under on-chain policy
 ════════════════════════════════════════════════════════════
    network                  Arbitrum Sepolia (chain 421614)
-   vault                    0x3bb637f613473ed4e4801220e4F7292e6b1949B6
+   vault                    0x822Cb3724d64870F6659ceca26534de8f5BD3840
    agent (me)               0x2ADbae68aA757811b3c4f29CE55873Fe5A800E07
    allowlisted recipient    0xE5843118b8E82Fa58fe2d022128a55527C3a5f1B
-   agent gas balance        0.002 ETH
+   agent gas balance        0.001978349648058 ETH
 
 ── Step 1 Read my policy, task budget and daily allowance
    per-tx cap               100 mUSDG (100000000 base units)
@@ -95,41 +97,47 @@ TRANSACTIONS
 
 ── Step 2 Pay 0xE584…5f1B directly (allowlisted, at or below the threshold)
    amount                   25 mUSDG (25000000 base units)
-   tx hash                  0xde3b81e1fec2230def5b84d605f6ef28bd4fdf54c8df07674edaeea683a62399
-   arbiscan                 https://sepolia.arbiscan.io/tx/0xde3b81e1fec2230def5b84d605f6ef28bd4fdf54c8df07674edaeea683a62399
-   block / gas              315151133 / 115372
+   tx hash                  0x1814efae9fa8b347fe9a5b66ef8cbc29897b8e4879e0ebf4017ef5f86982133b
+   arbiscan                 https://sepolia.arbiscan.io/tx/0x1814efae9fa8b347fe9a5b66ef8cbc29897b8e4879e0ebf4017ef5f86982133b
+   block / gas              315314319 / 97308
    ✔ PaymentExecuted: 25 mUSDG (25000000 base units) sent to the recipient
-   recipient balance        0 mUSDG (0 base units) → 25 mUSDG (25000000 base units)
+   recipient balance        140 mUSDG (140000000 base units) → 165 mUSDG (165000000 base units)
    allowance left today     475 mUSDG (475000000 base units)
 
-── Step 3 Try to pay more than my per-tx cap
+── Step 3 Try to pay more than my per-tx cap (sent for real, so it lands in the audit trail)
    amount                   150 mUSDG (150000000 base units)
-   ✖ blocked by the vault before signing: ExceedsPerTxCap()
-   nothing was sent, so there is no transaction hash. Proof nothing moved:
-   recipient balance        25 mUSDG (25000000 base units) → 25 mUSDG (25000000 base units)
+   tx hash                  0xcc2e8f1f4d32e45c1c9f94c6e14255ca29bb554fd116d3bb3e5f5cdd4921ade3
+   arbiscan                 https://sepolia.arbiscan.io/tx/0xcc2e8f1f4d32e45c1c9f94c6e14255ca29bb554fd116d3bb3e5f5cdd4921ade3
+   block / gas              315314337 / 40780
+   ✖ PaymentBlocked: 150 mUSDG (150000000 base units) refused, cause PerTxCap (per-tx cap is 100 mUSDG (100000000 base units))
+   Note: this is a SUCCESSFUL transaction. Arbiscan shows "Status: Success"; the refusal is the
+   PaymentBlocked event in its logs. The vault ran its checks, recorded the refusal and moved nothing.
+   (A revert would leave no on-chain record, so the attempt would vanish from the audit trail.)
+   the attempt is now on-chain in the audit trail, but nothing moved:
+   recipient balance        165 mUSDG (165000000 base units) → 165 mUSDG (165000000 base units)
    vault balance            9975 mUSDG (9975000000 base units) → 9975 mUSDG (9975000000 base units)
    task budget left         975 mUSDG (975000000 base units) → 975 mUSDG (975000000 base units)
-   agent nonce              1 → 1
-   ✔ on-chain state unchanged
+   spent today              25 mUSDG (25000000 base units) → 25 mUSDG (25000000 base units)
+   ✔ balances, task budget and daily allowance unchanged
 
 ── Step 4 Pay above the approval threshold, which goes to the owner's approval queue
    amount                   75 mUSDG (75000000 base units)
-   tx hash                  0xc214da380fea07774e20ffa383bba230b4f3188a1d788b2d01dc76efe5ff7b55
-   arbiscan                 https://sepolia.arbiscan.io/tx/0xc214da380fea07774e20ffa383bba230b4f3188a1d788b2d01dc76efe5ff7b55
-   block / gas              315151153 / 184679
+   tx hash                  0x0989779e0fd47aaf44ddf42e951ea7c8afdaaa71a06167b273b3ab143a0624e6
+   arbiscan                 https://sepolia.arbiscan.io/tx/0x0989779e0fd47aaf44ddf42e951ea7c8afdaaa71a06167b273b3ab143a0624e6
+   block / gas              315314354 / 183680
    ⏸ PaymentQueued: request #1 (cause: Threshold)
    waiting for              owner approval (run: npm run owner)
-   expires                  2026-10-06T00:13:18.000Z
-   recipient balance        25 mUSDG (25000000 base units) → 25 mUSDG (25000000 base units) (no funds moved)
+   expires                  2026-10-06T11:33:35.000Z
+   recipient balance        165 mUSDG (165000000 base units) → 165 mUSDG (165000000 base units) (no funds moved)
 
 ── Step 5 Lock funds in escrow for the recipient
    amount                   40 mUSDG (40000000 base units)
-   tx hash                  0x071a0195599584cd76003d2f9d7575d667921432d88f85e5feba4635ce3d70e4
-   arbiscan                 https://sepolia.arbiscan.io/tx/0x071a0195599584cd76003d2f9d7575d667921432d88f85e5feba4635ce3d70e4
-   block / gas              315151169 / 185904
+   tx hash                  0xf06339be99ce43ee5e7775d8883d79ae6dc5fa3271c739f2779bbcde62b5a888
+   arbiscan                 https://sepolia.arbiscan.io/tx/0xf06339be99ce43ee5e7775d8883d79ae6dc5fa3271c739f2779bbcde62b5a888
+   block / gas              315314372 / 184824
    ✔ EscrowCreated: escrow #1 locked
    release by               owner or approver (run: npm run owner)
-   refundable after         2026-10-04T00:13:19.000Z
+   refundable after         2026-10-04T11:33:38.000Z
    task budget left         975 mUSDG (975000000 base units) → 935 mUSDG (935000000 base units)
    vault reserved           975 mUSDG (975000000 base units) → 975 mUSDG (975000000 base units) (moved from task to escrow)
 
@@ -137,7 +145,7 @@ TRANSACTIONS
   Done: what the vault enforced
 ════════════════════════════════════════════════════════════
    ✔ paid 25 mUSDG (25000000 base units) autonomously
-   ✖ refused 150 mUSDG (150000000 base units) (per-tx cap)
+   ✖ refused 150 mUSDG (150000000 base units) (per-tx cap), logged on-chain as PaymentBlocked
    ⏸ queued 75 mUSDG (75000000 base units) for the owner
    ✔ escrowed 40 mUSDG (40000000 base units) pending release
    allowance left today     435 mUSDG (435000000 base units)
@@ -146,31 +154,31 @@ TRANSACTIONS
    Next: the owner runs npm run owner to approve the request and release the escrow.
 
 ########################################################################
-# 3. npm run owner (signed with Foundry keystore 'deployer')
+# 3. npm run owner (Foundry keystore 'deployer')
 ########################################################################
 ════════════════════════════════════════════════════════════
   Bursar owner console
 ════════════════════════════════════════════════════════════
-   vault                    0x3bb637f613473ed4e4801220e4F7292e6b1949B6
+   vault                    0x822Cb3724d64870F6659ceca26534de8f5BD3840
    owner                    0x4526144B69a6380818B8b118E4F383e0523E1B28
    signer                   Foundry keystore "deployer"
 
 ── Step A Pending requests from the demo agent: 1
    request #1: 75 mUSDG (75000000 base units) → 0xE5843118b8E82Fa58fe2d022128a55527C3a5f1B
    cast send … approveRequest(uint256) 1 --account deployer  (enter the keystore password)
-   tx hash                  0x36fe88ba2d83217988797e4aa88bcd3e1d210aeeafcb4f24daa1dfeb01836b42
-   arbiscan                 https://sepolia.arbiscan.io/tx/0x36fe88ba2d83217988797e4aa88bcd3e1d210aeeafcb4f24daa1dfeb01836b42
+   tx hash                  0xc591786009436b65dfee91ea3a50edf7efab6f843e8bfe7c64019d1f263a3341
+   arbiscan                 https://sepolia.arbiscan.io/tx/0xc591786009436b65dfee91ea3a50edf7efab6f843e8bfe7c64019d1f263a3341
    ✔ request #1 approved and paid
 
 ── Step B Locked escrows from the demo agent: 1
    escrow #1: 40 mUSDG (40000000 base units) → 0xE5843118b8E82Fa58fe2d022128a55527C3a5f1B
    cast send … releaseEscrow(uint256) 1 --account deployer  (enter the keystore password)
-   tx hash                  0x599c52fd40bbd4f2d35e9b142c0ac97dbb6e7250ecc87ad5bc4cf7e663790699
-   arbiscan                 https://sepolia.arbiscan.io/tx/0x599c52fd40bbd4f2d35e9b142c0ac97dbb6e7250ecc87ad5bc4cf7e663790699
+   tx hash                  0x7996fc4c5bc3f0478033f0a20702f75c0484b2dbd08ed2c3dd853dcd20543c2a
+   arbiscan                 https://sepolia.arbiscan.io/tx/0x7996fc4c5bc3f0478033f0a20702f75c0484b2dbd08ed2c3dd853dcd20543c2a
    ✔ escrow #1 released to the payee
 
 ── Step C Result
-   recipient balance        25 mUSDG (25000000 base units) → 140 mUSDG (140000000 base units)
+   recipient balance        165 mUSDG (165000000 base units) → 280 mUSDG (280000000 base units)
    vault balance            9975 mUSDG (9975000000 base units) → 9860 mUSDG (9860000000 base units)
    vault reserved           975 mUSDG (975000000 base units) → 860 mUSDG (860000000 base units)
    task budget left         935 mUSDG (935000000 base units) → 860 mUSDG (860000000 base units)
@@ -183,7 +191,7 @@ TRANSACTIONS
 ════════════════════════════════════════════════════════════
   Bursar vault status — Arbitrum Sepolia
 ════════════════════════════════════════════════════════════
-   vault                    https://sepolia.arbiscan.io/address/0x3bb637f613473ed4e4801220e4F7292e6b1949B6
+   vault                    https://sepolia.arbiscan.io/address/0x822Cb3724d64870F6659ceca26534de8f5BD3840
    owner                    0x4526144B69a6380818B8b118E4F383e0523E1B28
    token                    mUSDG (6 decimals) 0xF7a631d39aFE37290A500Edcae7C64aA19Ed8524
    paused                   false
@@ -204,7 +212,7 @@ TRANSACTIONS
 ── Step · Task "demo-task-1"
    task id                  0x2db36bc1effc8eeecdfa0b6cbad4be7d0b2fb08ed8f8b0cbd215b0e3641aade2
    open                     true
-   expires                  2026-10-09T22:32:02.000Z
+   expires                  2026-10-10T11:30:24.000Z
    remaining budget         860 mUSDG (860000000 base units)
    spent                    140 mUSDG (140000000 base units)
 
@@ -212,4 +220,4 @@ TRANSACTIONS
    #1 Executed       75 mUSDG → 0xE5843118b8E82Fa58fe2d022128a55527C3a5f1B
 
 ── Step · Escrows
-   #1 Released       40 mUSDG → 0xE5843118b8E82Fa58fe2d022128a55527C3a5f1B  deadline 2026-10-04T00:13:19.000Z
+   #1 Released       40 mUSDG → 0xE5843118b8E82Fa58fe2d022128a55527C3a5f1B  deadline 2026-10-04T11:33:38.000Z

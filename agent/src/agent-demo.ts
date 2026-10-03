@@ -93,34 +93,42 @@ kv("amount", amt(DIRECT));
 }
 
 // Step 3 ---------------------------------------------------------------------------------------
-step(3, "Try to pay more than my per-tx cap");
+step(3, "Try to pay more than my per-tx cap (sent for real, so it lands in the audit trail)");
 kv("amount", amt(OVER_CAP));
 {
+  const BLOCK_CAUSES = ["PerTxCap", "DailyCap", "TaskBudget"] as const;
   const before = await snapshot();
-  const nonceBefore = await publicClient.getTransactionCount({ address: account.address });
+  let request;
   try {
-    await publicClient.simulateContract({
+    ({ request } = await publicClient.simulateContract({
       account, ...vault, functionName: "pay", args: [deployment.taskId, deployment.recipient, OVER_CAP, reason("OVER_CAP")],
-    });
-    fatal("the over-cap payment unexpectedly passed simulation");
+    }));
   } catch (err) {
+    // Vaults deployed before PaymentBlocked existed still revert here.
     const name = revertName(err);
     if (!name) throw err;
-    blocked(`blocked by the vault before signing: ${bold(name)}()`);
+    fatal(`this vault reverts with ${name}() instead of logging PaymentBlocked: it predates the audit-trail change. Use the current deployment.`);
   }
+  const receipt = await confirm(await wallet.writeContract(request));
+  const [ev] = parseEventLogs({ abi: vaultAbi, logs: receipt.logs, eventName: "PaymentBlocked" });
+  if (!ev) fatal("expected a PaymentBlocked event");
+  blocked(`PaymentBlocked: ${amt(ev.args.amount)} refused, cause ${bold(BLOCK_CAUSES[ev.args.cause])} (per-tx cap is ${amt(before.policy.perTxCap)})`);
+  info(dim("Note: this is a SUCCESSFUL transaction. Arbiscan shows \"Status: Success\"; the refusal is the"));
+  info(dim("PaymentBlocked event in its logs. The vault ran its checks, recorded the refusal and moved nothing."));
+  info(dim("(A revert would leave no on-chain record, so the attempt would vanish from the audit trail.)"));
   const after = await snapshot();
-  const nonceAfter = await publicClient.getTransactionCount({ address: account.address });
-  info(dim("nothing was sent, so there is no transaction hash. Proof nothing moved:"));
+  info(dim("the attempt is now on-chain in the audit trail, but nothing moved:"));
   kv("recipient balance", `${amt(before.recipientBal)} → ${amt(after.recipientBal)}`);
   kv("vault balance", `${amt(before.vaultBal)} → ${amt(after.vaultBal)}`);
   kv("task budget left", `${amt(before.taskRemaining)} → ${amt(after.taskRemaining)}`);
-  kv("agent nonce", `${nonceBefore} → ${nonceAfter}`);
+  kv("spent today", `${amt(before.spentToday)} → ${amt(after.spentToday)}`);
   const unchanged =
     before.recipientBal === after.recipientBal &&
     before.vaultBal === after.vaultBal &&
     before.taskRemaining === after.taskRemaining &&
-    nonceBefore === nonceAfter;
-  if (unchanged) ok("on-chain state unchanged");
+    before.spentToday === after.spentToday &&
+    before.reserved === after.reserved;
+  if (unchanged) ok("balances, task budget and daily allowance unchanged");
   else fatal("state changed during the blocked step (another transaction may have landed concurrently)");
 }
 
@@ -170,7 +178,7 @@ kv("amount", amt(ESCROW));
 const end = await snapshot();
 banner("Done: what the vault enforced");
 ok(`paid ${amt(DIRECT)} autonomously`);
-blocked(`refused ${amt(OVER_CAP)} (per-tx cap)`);
+blocked(`refused ${amt(OVER_CAP)} (per-tx cap), logged on-chain as PaymentBlocked`);
 queued(`queued ${amt(NEEDS_APPROVAL)} for the owner`);
 ok(`escrowed ${amt(ESCROW)} pending release`);
 kv("allowance left today", amt(end.allowance));

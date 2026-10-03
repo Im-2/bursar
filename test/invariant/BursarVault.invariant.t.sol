@@ -90,6 +90,11 @@ contract BursarVaultInvariantTest is Test {
         }
     }
 
+    /// A blocked payment (pay returned (false, 0)) never moves funds or creates a request.
+    function invariant_blockedPaymentsAreNoOps() public view {
+        assertFalse(handler.ghost_blockedMovedState());
+    }
+
     /// Money out never exceeds money in, and the balance is exactly the difference.
     function invariant_paidOutNeverExceedsDeposits() public view {
         uint256 deposited = INITIAL_DEPOSIT + handler.ghost_deposited();
@@ -102,5 +107,6 @@ contract BursarVaultInvariantTest is Test {
         console.log("tasks opened", handler.taskCount());
         console.log("requests", vault.requestCount());
         console.log("escrows", vault.escrowCount());
+        console.log("blocked pays", handler.ghost_blocked());
     }
 }

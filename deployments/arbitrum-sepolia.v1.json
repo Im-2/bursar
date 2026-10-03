@@ -1,9 +1,6 @@
 {
   "network": "arbitrum-sepolia",
   "chainId": 421614,
-  "version": 2,
-  "previous": "deployments/arbitrum-sepolia.v1.json",
-  "changes": "pay() validates the task first, then logs limit violations (per-tx cap, task budget, daily cap) as PaymentBlocked and returns (false, 0) instead of reverting. createEscrow still reverts on limits.",
   "deployer": "0x4526144B69a6380818B8b118E4F383e0523E1B28",
   "compiler": {
     "solc": "0.8.28",
@@ -12,10 +9,10 @@
   },
   "contracts": {
     "BursarFactory": {
-      "address": "0x8Ab9F56B8dE7dcB8F6FFAB2F02AF4E1A1cEcb7C2",
-      "arbiscan": "https://sepolia.arbiscan.io/address/0x8Ab9F56B8dE7dcB8F6FFAB2F02AF4E1A1cEcb7C2",
-      "deployTx": "0xcea36d05f777fd7030faf8694ccd71f7995f5db7e6186631e75b068af1384696",
-      "block": 315313222,
+      "address": "0x8e6F4173742401009462712A5B898d10aEe402Dc",
+      "arbiscan": "https://sepolia.arbiscan.io/address/0x8e6F4173742401009462712A5B898d10aEe402Dc",
+      "deployTx": "0xd6f1dfb4b7507518b7e72bbd846781560fb403faf21e99de97987f96dc6d2a18",
+      "block": 315124586,
       "verified": true
     },
     "MockUSDG": {
@@ -25,13 +22,13 @@
       "block": 315124596,
       "verified": true,
       "decimals": 6,
-      "note": "testnet mock, public mint; reused from v1"
+      "note": "testnet mock, public mint"
     },
     "BursarVault": {
-      "address": "0x822Cb3724d64870F6659ceca26534de8f5BD3840",
-      "arbiscan": "https://sepolia.arbiscan.io/address/0x822Cb3724d64870F6659ceca26534de8f5BD3840",
-      "deployTx": "0x45e35354f72b9f95fe13acc4592a393123f8eda6d2829633274528be0a73beb9",
-      "block": 315313680,
+      "address": "0x3bb637f613473ed4e4801220e4F7292e6b1949B6",
+      "arbiscan": "https://sepolia.arbiscan.io/address/0x3bb637f613473ed4e4801220e4F7292e6b1949B6",
+      "deployTx": "0xf77710e1283154b7a8a925dae3f1dfe11b992d1bb26cb51f90a3ea5c58f5fee8",
+      "block": 315126986,
       "verified": true,
       "owner": "0x4526144B69a6380818B8b118E4F383e0523E1B28",
       "createdBy": "BursarFactory.createVault"
@@ -57,10 +54,14 @@
       "label": "demo-task-1",
       "taskId": "0x2db36bc1effc8eeecdfa0b6cbad4be7d0b2fb08ed8f8b0cbd215b0e3641aade2",
       "budget": "1000000000",
-      "expiry": 1791631824,
-      "openTx": "0x684f4ebff503b943c64e06097fc526c0ffd1b6951d517b044353ef6f88d2f85c"
+      "expiry": 1791585122,
+      "openTx": "0x796ad66fae4ee8620c71eb91635ad6deb6b65d8760b7146d3b15d0ad6441201b"
     },
     "vaultDeposit": "10000000000",
     "amountUnits": "token base units (6 decimals)"
+  },
+  "superseded": {
+    "by": "deployments/arbitrum-sepolia.json",
+    "reason": "v2 vault logs limit violations in pay() as PaymentBlocked instead of reverting"
   }
 }

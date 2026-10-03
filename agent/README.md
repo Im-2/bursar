@@ -42,7 +42,7 @@ The amounts are chosen relative to the seeded policy: per-tx cap 100, daily cap 
 
 1. **Read** the policy, the task budget and today's remaining allowance.
 2. **Direct payment** of 25 to the allowlisted recipient. This is at or below the threshold, so it executes.
-3. **Over-cap payment** of 150. The script simulates it first, and the vault rejects it with `ExceedsPerTxCap()`. Nothing is signed, and the script shows the balances, task budget and agent nonce unchanged.
+3. **Over-cap payment** of 150. It is sent as a real transaction: the vault refuses it without reverting, logs `PaymentBlocked` (cause `PerTxCap`), and returns `(false, 0)`. The attempt lands in the on-chain audit trail with an Arbiscan link, and the script shows the balances, task budget and daily allowance unchanged.
 4. **Payment above the threshold** of 75. It goes into the approval queue as a pending request.
 5. **Escrow** of 40 for the recipient. It stays locked until the owner or approver releases it, or it can be refunded after its deadline.
 

@@ -15,18 +15,20 @@ contract AdversarialTest is BaseTest {
     // =====================================================================
 
     function test_agent_splittingPaymentsStillHitsDailyCap() public {
-        // Agent wants to move 6,000 but perTxCap is 1,000 and dailyCap 5,000: splitting stops at the daily cap.
+        // Agent wants to move 6,000 but perTxCap is 1,000 and dailyCap 5,000: splitting stops at the daily cap,
+        // and the refused attempt is logged (PaymentBlocked) instead of reverting.
         vm.prank(owner);
         vault.setAgent(agent, _policy(PER_TX, DAILY, PER_TX));
         uint256 paid;
         for (uint256 i; i < 50; ++i) {
-            vm.prank(agent);
-            try vault.pay(TASK, recipient, 120e6, REASON) {
-                paid += 120e6;
-            } catch (bytes memory err) {
-                assertEq(bytes4(err), BursarVault.ExceedsDailyCap.selector);
+            if (paid + 120e6 > DAILY) {
+                _expectBlocked(agent, TASK, recipient, 120e6, BursarVault.BlockCause.DailyCap);
                 break;
             }
+            vm.prank(agent);
+            (bool executed,) = vault.pay(TASK, recipient, 120e6, REASON);
+            assertTrue(executed);
+            paid += 120e6;
         }
         assertLe(paid, DAILY);
         assertEq(token.balanceOf(recipient), paid);
@@ -41,12 +43,11 @@ contract AdversarialTest is BaseTest {
         }
         _escrow(agent, TASK, outsider, PER_TX, expiry);
         _escrow(agent, TASK, outsider, PER_TX, expiry);
+        // createEscrow still reverts on the cap; pay logs the attempt instead.
         vm.prank(agent);
         vm.expectRevert(BursarVault.ExceedsDailyCap.selector);
         vault.createEscrow(TASK, outsider, 1, expiry, REASON);
-        vm.prank(agent);
-        vm.expectRevert(BursarVault.ExceedsDailyCap.selector);
-        vault.pay(TASK, recipient, 1, REASON);
+        _expectBlocked(agent, TASK, recipient, 1, BursarVault.BlockCause.DailyCap);
     }
 
     function test_agent_cannotUseAnotherAgentsTask() public {

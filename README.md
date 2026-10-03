@@ -58,13 +58,13 @@ flowchart LR
 
 ## Deployed contracts (Arbitrum Sepolia)
 
-From [`deployments/arbitrum-sepolia.json`](deployments/arbitrum-sepolia.json):
+From [`deployments/arbitrum-sepolia.json`](deployments/arbitrum-sepolia.json) (v2; the v1 deployment is archived in [`deployments/arbitrum-sepolia.v1.json`](deployments/arbitrum-sepolia.v1.json)):
 
 | Contract / role | Address | Verified |
 |---|---|---|
-| BursarFactory | [`0x8e6F4173742401009462712A5B898d10aEe402Dc`](https://sepolia.arbiscan.io/address/0x8e6F4173742401009462712A5B898d10aEe402Dc) | ✅ |
+| BursarFactory | [`0x8Ab9F56B8dE7dcB8F6FFAB2F02AF4E1A1cEcb7C2`](https://sepolia.arbiscan.io/address/0x8Ab9F56B8dE7dcB8F6FFAB2F02AF4E1A1cEcb7C2) | ✅ |
 | MockUSDG (6 decimals, testnet mock) | [`0xF7a631d39aFE37290A500Edcae7C64aA19Ed8524`](https://sepolia.arbiscan.io/address/0xF7a631d39aFE37290A500Edcae7C64aA19Ed8524) | ✅ |
-| BursarVault (demo, created by the factory) | [`0x3bb637f613473ed4e4801220e4F7292e6b1949B6`](https://sepolia.arbiscan.io/address/0x3bb637f613473ed4e4801220e4F7292e6b1949B6) | ✅ |
+| BursarVault (demo, created by the factory) | [`0x822Cb3724d64870F6659ceca26534de8f5BD3840`](https://sepolia.arbiscan.io/address/0x822Cb3724d64870F6659ceca26534de8f5BD3840) | ✅ |
 | Vault owner / deployer | [`0x4526144B69a6380818B8b118E4F383e0523E1B28`](https://sepolia.arbiscan.io/address/0x4526144B69a6380818B8b118E4F383e0523E1B28) | n/a (wallet) |
 | Demo agent | [`0x2ADbae68aA757811b3c4f29CE55873Fe5A800E07`](https://sepolia.arbiscan.io/address/0x2ADbae68aA757811b3c4f29CE55873Fe5A800E07) | n/a (wallet) |
 | Demo recipient (allowlisted for the agent) | [`0xE5843118b8E82Fa58fe2d022128a55527C3a5f1B`](https://sepolia.arbiscan.io/address/0xE5843118b8E82Fa58fe2d022128a55527C3a5f1B) | n/a (wallet) |
@@ -77,12 +77,12 @@ These are real transactions from the run recorded in [`docs/demo-run.txt`](docs/
 
 | Step | Transaction | What it proves |
 |---|---|---|
-| Direct payment, 25 mUSDG | [`0xde3b…2399`](https://sepolia.arbiscan.io/tx/0xde3b81e1fec2230def5b84d605f6ef28bd4fdf54c8df07674edaeea683a62399) | The agent pays an allowlisted recipient on its own when the amount is within policy |
-| Over-cap payment, 150 mUSDG | none: blocked in simulation | The vault rejects it with `ExceedsPerTxCap()`. Recipient balance, vault balance, task budget and agent nonce were all unchanged. |
-| Above-threshold payment, 75 mUSDG | [`0xc214…7b55`](https://sepolia.arbiscan.io/tx/0xc214da380fea07774e20ffa383bba230b4f3188a1d788b2d01dc76efe5ff7b55) | Lands in the approval queue as request #1 (cause: threshold); no funds move |
-| Escrow created, 40 mUSDG | [`0x071a…70e4`](https://sepolia.arbiscan.io/tx/0x071a0195599584cd76003d2f9d7575d667921432d88f85e5feba4635ce3d70e4) | Funds are locked from the task budget for the payee |
-| Request #1 approved (owner) | [`0x36fe…6b42`](https://sepolia.arbiscan.io/tx/0x36fe88ba2d83217988797e4aa88bcd3e1d210aeeafcb4f24daa1dfeb01836b42) | The owner's sign-off executes the queued payment; it doesn't count toward the agent's daily cap |
-| Escrow #1 released (owner) | [`0x599c…0699`](https://sepolia.arbiscan.io/tx/0x599c52fd40bbd4f2d35e9b142c0ac97dbb6e7250ecc87ad5bc4cf7e663790699) | The owner releases the escrow to the payee |
+| Direct payment, 25 mUSDG | [`0x1814…133b`](https://sepolia.arbiscan.io/tx/0x1814efae9fa8b347fe9a5b66ef8cbc29897b8e4879e0ebf4017ef5f86982133b) | The agent pays an allowlisted recipient on its own when the amount is within policy |
+| Over-cap attempt, 150 mUSDG | [`0xcc2e…ade3`](https://sepolia.arbiscan.io/tx/0xcc2e8f1f4d32e45c1c9f94c6e14255ca29bb554fd116d3bb3e5f5cdd4921ade3) | A **successful** transaction that emits `PaymentBlocked` (cause `PerTxCap`): Arbiscan shows Status: Success with the event in the logs. Nothing moved, but the attempt is in the audit trail. |
+| Above-threshold payment, 75 mUSDG | [`0x0989…24e6`](https://sepolia.arbiscan.io/tx/0x0989779e0fd47aaf44ddf42e951ea7c8afdaaa71a06167b273b3ab143a0624e6) | Lands in the approval queue as request #1 (cause: threshold); no funds move |
+| Escrow created, 40 mUSDG | [`0xf063…a888`](https://sepolia.arbiscan.io/tx/0xf06339be99ce43ee5e7775d8883d79ae6dc5fa3271c739f2779bbcde62b5a888) | Funds are locked from the task budget for the payee |
+| Request #1 approved (owner) | [`0xc591…3341`](https://sepolia.arbiscan.io/tx/0xc591786009436b65dfee91ea3a50edf7efab6f843e8bfe7c64019d1f263a3341) | The owner's sign-off executes the queued payment; it doesn't count toward the agent's daily cap |
+| Escrow #1 released (owner) | [`0x7996…3c2a`](https://sepolia.arbiscan.io/tx/0x7996fc4c5bc3f0478033f0a20702f75c0484b2dbd08ed2c3dd853dcd20543c2a) | The owner releases the escrow to the payee |
 
 **End state:**
 - **Recipient:** received 140 mUSDG (25 + 75 + 40).
@@ -101,10 +101,10 @@ Each agent has `Policy { perTxCap, dailyCap, approvalThreshold, active, role }`,
 An agent's `pay(taskId, recipient, amount, reason)` goes through these checks in order:
 
 1. The vault is not paused and the agent is active.
-2. `amount <= perTxCap`, otherwise it reverts.
-3. The task is open, unexpired, belongs to the agent, and covers the amount, otherwise it reverts.
+2. The task is open, unexpired and belongs to the agent, otherwise it reverts.
+3. Over the per-tx cap or the task budget: **blocked**. `pay` emits `PaymentBlocked` and returns `(false, 0)` with no state change, so the attempt stays in the audit trail (a revert would leave no record). The transaction itself succeeds.
 4. If the recipient is not allowlisted, or `amount > approvalThreshold`, the payment is **queued**. It reserves nothing and doesn't count toward the daily cap.
-5. Otherwise, if the daily cap allows it, the payment executes. If not, it reverts.
+5. Otherwise, if the daily cap allows it, the payment executes; if not, it is **blocked** (`PaymentBlocked`, cause `DailyCap`). Return values: `(true, 0)` paid, `(false, id)` queued, `(false, 0)` blocked. `createEscrow` still reverts on limits.
 
 Other rules:
 
@@ -143,7 +143,7 @@ Other rules:
 
 ## Tests
 
-From an actual run of `forge test` (Foundry 1.7.1): **195 tests, 195 passed, 0 failed**, across 9 suites.
+From an actual run of `forge test` (Foundry 1.7.1): **203 tests, 203 passed, 0 failed**, across 9 suites.
 
 | Suite | Tests | Covers |
 |---|---|---|
@@ -158,10 +158,10 @@ Coverage, from `forge coverage --report summary --no-match-coverage "(test|scrip
 
 | File | Lines | Statements | Branches | Functions |
 |---|---|---|---|---|
-| `src/BursarVault.sol` | 100% (213/213) | 100% (269/269) | 100% (49/49) | 100% (42/42) |
+| `src/BursarVault.sol` | 100% (220/220) | 100% (278/278) | 100% (51/51) | 100% (44/44) |
 | `src/BursarFactory.sol` | 100% (6/6) | 100% (4/4) | n/a (0/0) | 100% (2/2) |
 | `src/mocks/MockUSDG.sol` | 100% (4/4) | 100% (2/2) | n/a (0/0) | 100% (2/2) |
-| **Total** | **100% (223/223)** | **100% (275/275)** | **100% (49/49)** | **100% (46/46)** |
+| **Total** | **100% (230/230)** | **100% (284/284)** | **100% (51/51)** | **100% (48/48)** |
 
 ---
 
