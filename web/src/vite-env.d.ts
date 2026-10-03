@@ -4,6 +4,7 @@ interface ImportMetaEnv {
   readonly VITE_RPC_URL?: string;
   readonly VITE_RPC_FALLBACK_URL?: string;
   readonly VITE_POLL_MS?: string;
+  readonly VITE_WALLETCONNECT_PROJECT_ID?: string;
 }
 interface ImportMeta {
   readonly env: ImportMetaEnv;

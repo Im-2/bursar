@@ -30,27 +30,44 @@ export function clients(account) {
   };
 }
 
-const SHIM = `(() => {
-  if (window.ethereum) return;
-  const pending = new Map(); let n = 0; const listeners = {};
+// Test wallet(s) in the page. Each announced wallet is a separate EIP-1193 provider (EIP-6963), all
+// bridged to the same Node signer; the first is also window.ethereum for legacy injected discovery.
+const shim = (wallets) => `(() => {
+  if (window.__bursarTestWallet) return;
+  window.__bursarTestWallet = true;
+  const pending = new Map(); let n = 0; const listeners = {}; // listeners[rdns][event]
   window.__walletResolve = (id, result, error) => {
     const p = pending.get(id); if (!p) return; pending.delete(id);
     if (error) p.reject(Object.assign(new Error(error.message), { code: error.code })); else p.resolve(result);
   };
-  window.__walletEmit = (ev, data) => (listeners[ev] || []).forEach((f) => { try { f(data); } catch {} });
-  window.ethereum = {
+  window.__walletEmit = (rdns, ev, data) => ((listeners[rdns] || {})[ev] || []).forEach((f) => { try { f(data); } catch {} });
+  const make = (rdns) => ({
     isBursarTestWallet: true,
     request: ({ method, params }) => new Promise((resolve, reject) => {
       const id = ++n; pending.set(id, { resolve, reject });
-      window.__wallet(JSON.stringify({ id, method, params: params ?? [] }));
+      window.__wallet(JSON.stringify({ id, method, params: params ?? [], rdns }));
     }),
-    on: (ev, f) => { (listeners[ev] ||= []).push(f); },
-    removeListener: (ev, f) => { listeners[ev] = (listeners[ev] || []).filter((x) => x !== f); },
-  };
+    on: (ev, f) => { ((listeners[rdns] ||= {})[ev] ||= []).push(f); },
+    removeListener: (ev, f) => { const l = (listeners[rdns] ||= {}); l[ev] = (l[ev] || []).filter((x) => x !== f); },
+  });
+  const wallets = ${JSON.stringify(wallets)};
+  const providers = wallets.map((w) => ({ info: w, provider: make(w.rdns) }));
+  if (providers[0]) window.ethereum = providers[0].provider;
+  const announce = () => providers.forEach((p) =>
+    window.dispatchEvent(new CustomEvent("eip6963:announceProvider", { detail: Object.freeze({ info: p.info, provider: p.provider }) })));
+  window.addEventListener("eip6963:requestProvider", announce);
+  announce();
 })();`;
 
+const icon = (letter, bg) =>
+  "data:image/svg+xml," + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" fill="${bg}"/><text x="16" y="22" font-family="monospace" font-weight="700" font-size="16" fill="#000" text-anchor="middle">${letter}</text></svg>`);
+export const TEST_WALLETS = [
+  { uuid: "8f3c1d2e-0000-4000-8000-000000000001", name: "Bursar Test Wallet", icon: icon("T", "#D4FF00"), rdns: "xyz.bursar.testwallet" },
+  { uuid: "8f3c1d2e-0000-4000-8000-000000000002", name: "Second Test Wallet", icon: icon("2", "#FFC148"), rdns: "xyz.bursar.testwallet2" },
+];
+
 /** Launches Chrome with the wallet shim. `startChainId` lets tests begin on the wrong network. */
-export async function launch({ account, startChainId = 1, width = 1440, height = 1000, log = () => {} }) {
+export async function launch({ account, startChainId = 1, width = 1440, height = 1000, log = () => {}, wallets = 1 }) {
   const { publicClient, walletClient } = clients(account);
   const chrome = process.env.CHROME_PATH || "C:/Program Files/Google/Chrome/Application/chrome.exe";
   const port = 9300 + Math.floor(Math.random() * 500);
@@ -76,16 +93,22 @@ export async function launch({ account, startChainId = 1, width = 1440, height =
     });
 
   // ------------------------------------------------------------ wallet state + request handling
-  const wallet = { connected: false, chainId: startChainId, sent: [] };
-  const emit = (ev, data) => send("Runtime.evaluate", { expression: `window.__walletEmit(${JSON.stringify(ev)}, ${JSON.stringify(data)})` }).catch(() => {});
+  const wallet = { connected: false, chainId: startChainId, sent: [], rejectNext: false };
+  // Events go only to the provider (wallet) that made the request, like separate real wallets.
+  const emit = (rdns, ev, data) =>
+    send("Runtime.evaluate", { expression: `window.__walletEmit(${JSON.stringify(rdns)}, ${JSON.stringify(ev)}, ${JSON.stringify(data)})` }).catch(() => {});
 
-  async function handle(method, params) {
+  async function handle(method, params, rdns) {
+    if (wallet.rejectNext && ["eth_requestAccounts", "wallet_requestPermissions"].includes(method)) {
+      wallet.rejectNext = false;
+      throw Object.assign(new Error("User rejected the request."), { code: 4001 });
+    }
     switch (method) {
       case "eth_accounts":
         return wallet.connected ? [account.address] : [];
       case "eth_requestAccounts":
         wallet.connected = true;
-        emit("accountsChanged", [account.address]);
+        emit(rdns, "accountsChanged", [account.address]);
         return [account.address];
       case "eth_chainId":
         return numberToHex(wallet.chainId);
@@ -93,10 +116,16 @@ export async function launch({ account, startChainId = 1, width = 1440, height =
         const id = Number(params[0].chainId);
         if (id !== arbitrumSepolia.id) throw Object.assign(new Error("Unrecognized chain"), { code: 4902 });
         wallet.chainId = id;
-        emit("chainChanged", numberToHex(id));
+        emit(rdns, "chainChanged", numberToHex(id));
         return null;
       }
       case "wallet_addEthereumChain":
+        return null;
+      case "wallet_requestPermissions":
+      case "wallet_getPermissions":
+        return [{ parentCapability: "eth_accounts" }];
+      case "wallet_revokePermissions":
+        wallet.connected = false;
         return null;
       case "eth_sendTransaction": {
         if (wallet.chainId !== arbitrumSepolia.id) throw Object.assign(new Error("Wrong network"), { code: 4901 });
@@ -124,11 +153,11 @@ export async function launch({ account, startChainId = 1, width = 1440, height =
       return;
     }
     if (msg.method === "Runtime.bindingCalled" && msg.params.name === "__wallet") {
-      const { id, method, params } = JSON.parse(msg.params.payload);
+      const { id, method, params, rdns } = JSON.parse(msg.params.payload);
       let result = null;
       let error = null;
       try {
-        result = await handle(method, params);
+        result = await handle(method, params, rdns);
       } catch (e) {
         error = { message: e.shortMessage ?? e.message, code: e.code ?? -32603 };
       }
@@ -140,7 +169,7 @@ export async function launch({ account, startChainId = 1, width = 1440, height =
   await send("Runtime.enable");
   await send("Runtime.addBinding", { name: "__wallet" });
   await send("Page.enable");
-  await send("Page.addScriptToEvaluateOnNewDocument", { source: SHIM });
+  await send("Page.addScriptToEvaluateOnNewDocument", { source: shim(TEST_WALLETS.slice(0, wallets)) });
   await send("Emulation.setDeviceMetricsOverride", { width, height, deviceScaleFactor: 1, mobile: width < 600 });
 
   // ------------------------------------------------------------ page helpers
@@ -153,6 +182,13 @@ export async function launch({ account, startChainId = 1, width = 1440, height =
   const page = {
     wallet,
     evaluate,
+    /** Opens the connect modal and picks the test wallet (EIP-6963 entry). */
+    async connect(rdns = TEST_WALLETS[0].rdns) {
+      await this.click('[data-testid="connect-wallet"]');
+      await this.waitFor(`!!document.querySelector('[data-testid="wallet-option-${rdns}"]')`, { label: "test wallet in modal" });
+      await this.click(`[data-testid="wallet-option-${rdns}"]`);
+      await this.waitFor(`!!document.querySelector('[data-testid=wallet-account]')`, { label: "connected on Arbitrum Sepolia" });
+    },
     async goto(url) {
       await send("Page.navigate", { url });
       await sleep(800);

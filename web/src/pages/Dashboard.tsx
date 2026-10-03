@@ -5,7 +5,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { Badge, Button, SectionBar } from "../components/ds";
 import { OwnerConsole } from "../components/vault/OwnerConsole";
 import { Activity, Addr, Agents, Escrows, Queue, Tasks, useNow, useVaultCtx, VaultOverview, type VaultCtx } from "../components/vault/panels";
-import { WalletButton } from "../components/web3";
+import { NetworkBanner, WalletButton } from "../components/web3";
 import { addressUrl, chain, DEPLOYMENT, parseAddress, POLL_MS } from "../lib/chain";
 import { formatAgo, shortAddr } from "../lib/format";
 import { useVault, type VaultData } from "../lib/useVault";
@@ -50,8 +50,7 @@ function OwnerSection({ ctx }: { ctx: VaultCtx }) {
   const w = useWallet();
   const { d } = ctx;
   let hint: React.ReactNode = null;
-  if (!w.hasProvider) hint = <>Install a browser wallet and connect as the vault owner to manage this vault.</>;
-  else if (!w.account) hint = <>Read-only. <strong>Connect as owner</strong> ({shortAddr(d.owner)}) to approve requests, release escrows, open tasks and change policy.</>;
+  if (!w.account) hint = <>Read-only. <strong>Connect as owner</strong> ({shortAddr(d.owner)}) to approve requests, release escrows, open tasks and change policy.</>;
   else if (!w.onRightChain) hint = <>Your wallet is on another network. Switch to {chain.name} to continue.</>;
   else if (!ctx.isOwner)
     hint = (
@@ -137,6 +136,7 @@ export default function Dashboard() {
       <SiteHeader d={data} error={error} title={vaultAddr === DEPLOYMENT.vault ? "Demo vault dashboard" : "Vault dashboard"} />
       <main className="dash-main" aria-busy={loading}>
         <div className="ds-container">
+          <NetworkBanner />
           <VaultPicker current={vaultAddr ?? ""} />
         </div>
         {!vaultAddr && (

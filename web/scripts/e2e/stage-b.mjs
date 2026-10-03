@@ -97,8 +97,7 @@ await page.waitFor(`!!document.querySelector('[data-testid=owner-hint]')`);
 log("  hint:", await page.evaluate(`document.querySelector('[data-testid=owner-hint]').textContent`));
 
 step("Connect: wallet starts on chain 1, app prompts to switch to Arbitrum Sepolia");
-await page.click('[data-testid="connect-wallet"]');
-await page.waitFor(`!!document.querySelector('[data-testid=wallet-account]')`, { label: "connected on Arbitrum Sepolia" });
+await page.connect(); // modal -> EIP-6963 test wallet -> switch prompt
 log("  wallet chain now", page.wallet.chainId);
 await page.waitFor(`/owner is/.test(document.querySelector('[data-testid=owner-hint]')?.textContent || '')`);
 log("  non-owner hint:", await page.evaluate(`document.querySelector('[data-testid=owner-hint]').textContent`));
