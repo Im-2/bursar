@@ -2,7 +2,8 @@
 // Usage (dev server running): BURSAR_TEST_WALLET_FILE=/path/wallet.json node scripts/e2e/stage-c.mjs
 import { mkdirSync, writeFileSync } from "node:fs";
 import deployment from "../../../deployments/arbitrum-sepolia.json" with { type: "json" };
-import { launch, loadTestAccount, sleep } from "./harness.mjs";
+import { keccak256, toHex } from "viem";
+import { clients, launch, loadTestAccount, sleep } from "./harness.mjs";
 
 const APP = process.env.APP_URL || "http://localhost:5173";
 const SHOTS = new URL("../../../docs/screenshots/", import.meta.url);
@@ -17,6 +18,7 @@ const text = (sel) => `(document.querySelector(${JSON.stringify(sel)})?.textCont
 const stepState = (n) => `document.querySelector('[data-testid=step-${n}]')?.dataset.state`;
 
 const account = loadTestAccount();
+const { publicClient } = clients(account);
 const page = await launch({ account, startChainId: 1, log });
 const tx = [];
 const signed = async (label, fn, opts) => {
@@ -38,6 +40,13 @@ await signed("createVault via factory", () => page.click('[data-testid="create-v
 await page.waitFor(`!!document.querySelector('.pg-vault-line a')`, { label: "new vault selected" });
 const vault = await page.evaluate(`document.querySelector('.pg-vault-line a').getAttribute('title')`);
 assert(vault && vault.toLowerCase() !== deployment.contracts.BursarVault.address.toLowerCase(), `own vault ${vault} (not the demo vault)`);
+const factoryVaults = await publicClient.readContract({
+  address: deployment.contracts.BursarFactory.address,
+  abi: [{ type: "function", name: "vaultsOf", stateMutability: "view", inputs: [{ type: "address" }], outputs: [{ type: "address[]" }] }],
+  functionName: "vaultsOf",
+  args: [account.address],
+});
+assert(factoryVaults.map((v) => v.toLowerCase()).includes(vault.toLowerCase()), `vault created by the v2 factory ${deployment.contracts.BursarFactory.address}`);
 await signed("mint 1000 mUSDG", () => page.click('[data-testid="mint"]'));
 await signed("approve + deposit 1000", () => page.click('[data-testid="deposit"]'), { count: 2 });
 await page.waitFor(`${stepState(2)} === 'done' && ${stepState(3)} === 'current'`, { label: "step 2 done" });
@@ -68,13 +77,15 @@ await signed("c) releaseEscrow as owner", () => page.click('[data-testid="releas
 await page.waitFor(`/Released/.test(${text("[data-testid=result-c]")})`);
 assert(true, "c) bounty released on approval");
 
-log("▶ Step 4d: over-limit attempt (blocked, nothing sent)");
-const sentBefore = page.wallet.sent.length;
-await page.click('[data-testid="run-d"]');
-await page.waitFor(`!!document.querySelector('[data-testid=result-d]')`);
-const dErr = await page.evaluate(text("[data-testid=result-d-error]"));
-assert(dErr === "ExceedsPerTxCap()", `d) decoded error ${dErr}`);
-assert(page.wallet.sent.length === sentBefore, "d) no transaction was signed or sent");
+log("▶ Step 4d: over-limit attempt (real tx, logged as PaymentBlocked)");
+const [blockedHash] = await signed("d) pay 150 over the per-tx cap", () => page.click('[data-testid="run-d"]'));
+await page.waitFor(`!!document.querySelector('[data-testid=result-d-cause]')`, { label: "blocked result" });
+const dCause = await page.evaluate(text("[data-testid=result-d-cause]"));
+assert(dCause === "per-tx cap", `d) UI shows Blocked with cause "${dCause}"`);
+assert((await page.evaluate(`document.querySelector('[data-testid=result-d-unchanged]').dataset.unchanged`)) === "true", "d) vault balance, task budget and daily spend unchanged (read on-chain)");
+const dReceipt = await publicClient.waitForTransactionReceipt({ hash: blockedHash });
+const blockedTopic = keccak256(toHex("PaymentBlocked(address,bytes32,address,uint256,bytes32,uint8)"));
+assert(dReceipt.status === "success" && dReceipt.logs.some((l) => l.topics[0] === blockedTopic), "d) receipt status success with a PaymentBlocked log");
 await page.evaluate(`document.querySelector('[data-testid=result-d]').scrollIntoView({block:'center'})`);
 await page.screenshot(shot("playground-blocked.png"), { fullPage: false });
 

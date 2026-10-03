@@ -84,7 +84,9 @@ Destructive actions (pause, revoke, close task) ask for a second click to confir
 
 ## Playground (Stage C, `/try`)
 
-A **testnet sandbox with a mock token and no real funds**, where a visitor drives their own vault with their own wallet. The deployer's demo vault is never touched from here.
+A **testnet sandbox with a mock token and no real funds**, where a visitor drives their own vault with their own wallet. Vaults are created through the current (v2) factory. The deployer's demo vault is never touched from here.
+
+Scenario reason codes use the label prefixes (`DATA_PURCHASE`, `SUBAGENT_HIRE`, `HUMAN_BOUNTY`, `DATA_OVERSIZED_ORDER`, `DATA_LARGE_ORDER`, `API_UNKNOWN_VENDOR`), so the dashboard's use-case chips apply.
 
 1. **Connect:** connect and switch network. The page shows your ETH balance, with faucet links if it's below 0.0005 ETH.
 2. **Create and fund:** create your own vault through `BursarFactory.createVault(MockUSDG)`, mint mock USDG to yourself, then approve and deposit. Your vaults are listed from the factory (`vaultsOf`), and the last one you used is remembered in localStorage, so you can come back to it.
@@ -93,7 +95,7 @@ A **testnet sandbox with a mock token and no real funds**, where a visitor drive
    - **A. Buy data:** a direct payment within every limit.
    - **B. Hire a sub-agent:** an escrow to another address, then released by you as owner.
    - **C. Pay a human bounty:** an escrow to a person (editable address), released when you approve the work.
-   - **D. Over-limit attempt:** above the per-tx cap. Simulated first and shown as blocked with `ExceedsPerTxCap()`; nothing is signed or sent.
+   - **D. Over-limit attempt:** above the per-tx cap. Sent as a real transaction: the v2 vault logs `PaymentBlocked` (cause shown, e.g. per-tx cap) and moves nothing. Arbiscan shows it as a successful transaction with the event in its logs; the card re-reads the vault balance, task budget and daily spend from the chain to prove nothing changed.
    - **E. Needs approval:** above the threshold, or to a non-allowlisted address. It lands in the approval queue, and you approve or reject it.
 
 Your vault's live state (balances, policy, task budget, queue, escrows, activity) sits next to the scenarios. Scenario amounts are derived from your current policy.

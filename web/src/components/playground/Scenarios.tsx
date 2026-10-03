@@ -2,11 +2,12 @@
 // demonstrates, runs it (simulate -> sign -> confirm) and shows the decoded on-chain result.
 import { useState, type ReactNode } from "react";
 import { parseEventLogs, stringToHex, type Address, type Hex, type TransactionReceipt } from "viem";
-import { vaultAbi } from "../../abi";
-import { parseAddress } from "../../lib/chain";
+import { tokenAbi, vaultAbi } from "../../abi";
+import { client, parseAddress } from "../../lib/chain";
+import { blockCauseLabel } from "../../lib/labels";
 import { formatAmount, shortAddr } from "../../lib/format";
 import type { DemoAddresses } from "../../lib/playground";
-import { simulateOnly, useTx, type ContractCall } from "../../lib/tx";
+import { useTx } from "../../lib/tx";
 import { Badge, Button, Card } from "../ds";
 import { Addr, Amount, VaultAction, type VaultCtx } from "../vault/panels";
 import { Field, TxStatusLine } from "../web3";
@@ -49,7 +50,7 @@ function BuyData({ ctx, task, addrs }: { ctx: VaultCtx; task: Task; addrs: DemoA
   const tx = useTx(() => ctx.refresh());
   async function run() {
     setResult(null);
-    const r = await tx.run("Buy data", { address: d.vault, abi: vaultAbi, functionName: "pay", args: [task.id, addrs.vendor, amount, reason("BUY_DATA")] });
+    const r = await tx.run("Buy data", { address: d.vault, abi: vaultAbi, functionName: "pay", args: [task.id, addrs.vendor, amount, reason("DATA_PURCHASE")] });
     if (!r) return;
     const ev = vaultEvents(r);
     const paid = ev.find((e) => e.eventName === "PaymentExecuted");
@@ -75,7 +76,7 @@ function BuyData({ ctx, task, addrs }: { ctx: VaultCtx; task: Task; addrs: DemoA
       letter="A"
       title="Buy data"
       demonstrates={<>A routine purchase inside every limit executes instantly. This is the autonomy you <em>do</em> want.</>}
-      call={<>pay(task, vendor {shortAddr(addrs.vendor)}, {formatAmount(amount, d.token.decimals)} {d.token.symbol}, "BUY_DATA")</>}
+      call={<>pay(task, vendor {shortAddr(addrs.vendor)}, {formatAmount(amount, d.token.decimals)} {d.token.symbol}, "DATA_PURCHASE")</>}
     >
       <div className="ds-actions">
         <Button onClick={run} disabled={tx.busy} data-testid="run-a">Run as agent</Button>
@@ -176,41 +177,57 @@ function OverLimit({ ctx, task, addrs }: { ctx: VaultCtx; task: Task; addrs: Dem
   const policy = d.agents.find((a) => a.address === ctx.account)!.policy;
   const amount = policy.perTxCap + 50n * UNIT(d);
   const [result, setResult] = useState<ReactNode>(null);
-  const [busy, setBusy] = useState(false);
+  const tx = useTx(() => ctx.refresh());
+
   async function run() {
-    setBusy(true);
     setResult(null);
-    const before = { balance: d.balance, remaining: task.remaining };
-    const call: ContractCall = { address: d.vault, abi: vaultAbi, functionName: "pay", args: [task.id, addrs.vendor, amount, reason("OVER_LIMIT")] };
-    const err = await simulateOnly(ctx.account!, call);
-    setBusy(false);
+    const before = { balance: d.balance, remaining: task.remaining, spent: d.agents.find((a) => a.address === ctx.account)!.spentToday };
+    const r = await tx.run("Over-limit attempt", {
+      address: d.vault, abi: vaultAbi, functionName: "pay", args: [task.id, addrs.vendor, amount, reason("DATA_OVERSIZED_ORDER")],
+    });
+    if (!r) return; // a pre-v2 vault reverts with ExceedsPerTxCap(): the status line shows the decoded name
+    const ev = vaultEvents(r).find((e) => e.eventName === "PaymentBlocked");
+    if (!ev || !("cause" in ev.args)) {
+      setResult(<div className="scenario__result" data-testid="result-d"><p>Unexpected: no PaymentBlocked event in the receipt.</p></div>);
+      return;
+    }
+    // Re-read from the chain right after the receipt: nothing may have moved.
+    const [balance, t, spent] = await Promise.all([
+      client.readContract({ address: d.token.address, abi: tokenAbi, functionName: "balanceOf", args: [d.vault] }),
+      client.readContract({ address: d.vault, abi: vaultAbi, functionName: "getTask", args: [task.id] }),
+      client.readContract({ address: d.vault, abi: vaultAbi, functionName: "spentToday", args: [ctx.account!] }),
+    ]);
+    const unchanged = balance === before.balance && t.remaining === before.remaining && spent === before.spent;
     setResult(
-      err?.errorName ? (
-        <div className="scenario__result scenario__result--blocked" data-testid="result-d">
-          <p>
-            <Badge tone="blocked">Blocked</Badge> The vault rejected it with <code className="tx-status__error" data-testid="result-d-error">{err.errorName}()</code>. The amount <Amount raw={amount} d={d} /> is over the per-tx cap of <Amount raw={policy.perTxCap} d={d} />.
-          </p>
-          <p className="ds-muted">
-            Nothing was signed or sent. Vault balance is still <Amount raw={before.balance} d={d} /> and the task still has <Amount raw={before.remaining} d={d} /> left. A compromised agent key hits the same wall.
-          </p>
-        </div>
-      ) : (
-        <div className="scenario__result" data-testid="result-d">
-          <p>{err ? err.error : "Unexpected: the simulation passed."}</p>
-        </div>
-      ),
+      <div className="scenario__result scenario__result--blocked" data-testid="result-d">
+        <p>
+          <Badge tone="blocked">Blocked · <span data-testid="result-d-cause">{blockCauseLabel(Number(ev.args.cause))}</span></Badge>{" "}
+          The vault logged <code className="tx-status__error" data-testid="result-d-event">PaymentBlocked</code>: <Amount raw={amount} d={d} /> is over the per-tx cap of{" "}
+          <Amount raw={policy.perTxCap} d={d} />.
+        </p>
+        <p className="ds-muted">
+          This was a <strong>successful transaction</strong>: Arbiscan shows Status: Success, with PaymentBlocked in its logs. The vault ran its checks,
+          recorded the refusal in the audit trail and moved nothing.
+        </p>
+        <p className="ds-muted" data-testid="result-d-unchanged" data-unchanged={unchanged}>
+          {unchanged ? "Checked on-chain after the receipt: " : "Warning, state changed: "}vault balance <Amount raw={balance} d={d} />, task budget left{" "}
+          <Amount raw={t.remaining} d={d} />, agent spent today <Amount raw={spent} d={d} />. A compromised agent key hits the same wall.
+        </p>
+      </div>,
     );
   }
+
   return (
     <ScenarioCard
       letter="D"
       title="Over-limit attempt"
-      demonstrates={<>An agent (or someone who stole its key) tries to move more than its per-transaction cap. The contract refuses; no transaction is even sent.</>}
-      call={<>pay(task, vendor, {formatAmount(amount, d.token.decimals)} {d.token.symbol}, "OVER_LIMIT")</>}
+      demonstrates={<>An agent (or someone who stole its key) tries to move more than its per-transaction cap. The vault refuses and logs the attempt on-chain, so it shows up in the audit trail.</>}
+      call={<>pay(task, vendor, {formatAmount(amount, d.token.decimals)} {d.token.symbol}, "DATA_OVERSIZED_ORDER")</>}
     >
       <div className="ds-actions">
-        <Button onClick={run} disabled={busy} data-testid="run-d">{busy ? "Simulating…" : "Try it as agent"}</Button>
+        <Button onClick={run} disabled={tx.busy} data-testid="run-d">Try it as agent</Button>
       </div>
+      <TxStatusLine state={tx.state} />
       {result}
     </ScenarioCard>
   );
@@ -233,7 +250,7 @@ function NeedsApproval({ ctx, task, addrs }: { ctx: VaultCtx; task: Task; addrs:
 
   async function run() {
     setRequestId(null);
-    const r = await tx.run("Needs approval", { address: d.vault, abi: vaultAbi, functionName: "pay", args: [task.id, to, amount, reason("NEEDS_APPROVAL")] });
+    const r = await tx.run("Needs approval", { address: d.vault, abi: vaultAbi, functionName: "pay", args: [task.id, to, amount, reason(mode === "threshold" ? "DATA_LARGE_ORDER" : "API_UNKNOWN_VENDOR")] });
     if (!r) return;
     const ev = vaultEvents(r).find((e) => e.eventName === "PaymentQueued");
     if (ev && "id" in ev.args) setRequestId(ev.args.id as bigint);
@@ -244,7 +261,7 @@ function NeedsApproval({ ctx, task, addrs }: { ctx: VaultCtx; task: Task; addrs:
       letter="E"
       title="Needs approval"
       demonstrates={<>Anything unusual (a big payment, or an unknown recipient) waits in the approval queue instead of executing. You approve or reject it.</>}
-      call={<>pay(task, {mode === "threshold" ? "vendor" : "unknown"} {shortAddr(to)}, {formatAmount(amount, d.token.decimals)} {d.token.symbol}, "NEEDS_APPROVAL")</>}
+      call={<>pay(task, {mode === "threshold" ? "vendor" : "unknown"} {shortAddr(to)}, {formatAmount(amount, d.token.decimals)} {d.token.symbol}, "{mode === "threshold" ? "DATA_LARGE_ORDER" : "API_UNKNOWN_VENDOR"}")</>}
     >
       <div className="ds-actions" role="radiogroup" aria-label="Why it needs approval">
         <label className="ds-check">
@@ -311,7 +328,7 @@ export function Scenarios({ ctx, task, addrs, updateAddrs }: {
         payeeLabel="Sub-agent"
         amount={minBig(policy.perTxCap, 30n * unit)}
         deadlineSecs={3600}
-        code="SUB_AGENT"
+        code="SUBAGENT_HIRE"
         testId="b"
       />
       <EscrowScenario
@@ -324,7 +341,7 @@ export function Scenarios({ ctx, task, addrs, updateAddrs }: {
         payeeLabel="Human"
         amount={minBig(policy.perTxCap, 40n * unit)}
         deadlineSecs={86400}
-        code="BOUNTY"
+        code="HUMAN_BOUNTY"
         testId="c"
         editablePayee
         onPayee={(v) => updateAddrs({ human: v })}
