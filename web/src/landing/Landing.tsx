@@ -14,14 +14,6 @@ import { Showcase } from "./Showcase";
 export default function Landing() {
   const { hash } = useLocation();
 
-  useEffect(() => {
-    const prev = document.title;
-    document.title = "Bursar: budgets for AI agents";
-    return () => {
-      document.title = prev;
-    };
-  }, []);
-
   // Opening "/#faq" (etc.) directly lands on that section.
   useEffect(() => {
     if (hash) document.getElementById(hash.slice(1))?.scrollIntoView({ block: "start" });

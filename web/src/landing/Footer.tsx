@@ -1,6 +1,7 @@
 // Landing footer: brand, link columns and the testnet / not-audited notice. No signup form (there is no backend).
-import { AtSign, BookOpen, FolderGit2, ScrollText, UserRound, Vault, type LucideIcon } from "lucide-react";
+import { AtSign, BookOpen, FolderGit2, ScrollText, UserRound, type LucideIcon } from "lucide-react";
 import { Link } from "react-router-dom";
+import { BrandMark } from "../components/ds";
 import { addressUrl, DEPLOYMENT } from "../lib/chain";
 import { scrollToSection } from "./LandingNav";
 
@@ -42,9 +43,7 @@ export function Footer() {
       <div className="landing-footer__card">
         <div className="landing-footer__brand">
           <Link to="/" className="brand" aria-label="Bursar home">
-            <span className="brand__logo" aria-hidden="true">
-              <Vault size={20} strokeWidth={2.5} />
-            </span>
+            <BrandMark size={40} />
             Bursar
           </Link>
           <p className="landing-footer__tagline">Spending limits for AI agents, on Arbitrum.</p>

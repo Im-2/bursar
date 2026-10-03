@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="512" height="512" role="img" aria-label="Bursar logo">
+  <rect x="14" y="14" width="106" height="106" rx="22" fill="#000"/>
+  <rect x="8" y="8" width="106" height="106" rx="22" fill="#F5C242" stroke="#000" stroke-width="6"/>
+  <circle cx="61" cy="61" r="36" fill="#FFF4DC" stroke="#000" stroke-width="6"/>
+  <!-- limit gauge: filled arc = budget used -->
+  <path d="M33.5 61 A27.5 27.5 0 0 1 61 33.5" fill="none" stroke="#A8D8B9" stroke-width="7" stroke-linecap="butt"/>
+  <path d="M61 33.5 A27.5 27.5 0 0 1 88.5 61" fill="none" stroke="#000" stroke-width="3" stroke-dasharray="2 5"/>
+  <!-- keyhole: the vault -->
+  <circle cx="61" cy="56" r="9" fill="#000"/>
+  <path d="M55 60 L67 60 L71 82 L51 82 Z" fill="#000"/>
+  <circle cx="61" cy="56" r="3.2" fill="#F8B8F0"/>
+</svg>

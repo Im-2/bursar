@@ -1,12 +1,12 @@
 // App frame: mint sidebar (drawer on phones) + top bar + content. Used by /dashboard and /try.
-import { Activity, Bot, FlaskConical, Inbox, LayoutDashboard, ListChecks, LockKeyhole, Menu, Settings, Vault, X } from "lucide-react";
+import { Activity, Bot, FlaskConical, Inbox, LayoutDashboard, ListChecks, LockKeyhole, Menu, Settings, X } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { chain, POLL_MS } from "../lib/chain";
 import { formatAgo } from "../lib/format";
 import { useWallet } from "../lib/wallet";
 import type { VaultData } from "../lib/useVault";
-import { Badge, IconButton } from "./ds";
+import { Badge, BrandMark, IconButton } from "./ds";
 import { useNow } from "./vault/panels";
 import { WalletButton } from "./web3";
 
@@ -28,9 +28,7 @@ function Sidebar({ open, onNavigate }: { open: boolean; onNavigate: () => void }
   return (
     <nav className="sidebar" data-open={open} aria-label="Main" id="app-sidebar">
       <Link to="/" className="sidebar__brand" onClick={onNavigate} aria-label="Bursar home">
-        <span className="sidebar__logo" aria-hidden="true">
-          <Vault size={20} strokeWidth={2.5} />
-        </span>
+        <BrandMark size={40} />
         Bursar
       </Link>
       <div className="sidebar__nav">
@@ -100,9 +98,7 @@ function TopBar({ title, d, error, loading, onMenu, menuOpen }: {
         </span>
         {/* On phones the sidebar (and its logo) is a drawer, so the top bar carries a home link too. */}
         <Link to="/" className="brand topbar__brand" aria-label="Bursar home">
-          <span className="brand__logo" aria-hidden="true">
-            <Vault size={18} strokeWidth={2.5} />
-          </span>
+          <BrandMark size={36} />
         </Link>
         <span className="topbar__title">{title}</span>
       </div>

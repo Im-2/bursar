@@ -189,6 +189,11 @@ export function Table<T>({ title, aside, columns, rows, rowKey, empty }: {
   );
 }
 
+/** The Bursar mark (web/public/bursar-mark.svg). It carries its own border and shadow. */
+export function BrandMark({ size = 40 }: { size?: number }) {
+  return <img className="brand__mark" src="/bursar-mark.svg" alt="Bursar" width={size} height={size} />;
+}
+
 /** Labelled chip for what a payment was for, derived from its reason code (see lib/labels.ts). */
 export function UseCaseChip({ reason }: { reason: Hex | undefined }) {
   const u = useCaseFromReason(reason);

@@ -155,16 +155,10 @@ h3 {
 .brand:hover {
   color: var(--c-ink);
 }
-.sidebar__logo,
-.brand__logo {
-  display: grid;
-  place-items: center;
-  width: 36px;
-  height: 36px;
-  border: var(--bw-sm) solid var(--c-line);
-  border-radius: var(--radius-sm);
-  background: var(--c-mustard);
-  box-shadow: var(--shadow-sm);
+/* the Bursar mark image (it draws its own border and offset shadow) */
+.brand__mark {
+  display: block;
+  flex: none;
 }
 .sidebar__nav {
   display: grid;

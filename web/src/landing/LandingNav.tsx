@@ -1,8 +1,9 @@
 // Landing top nav: wordmark, in-page section links (smooth scroll), and links into the app.
 // Below 900px the links and buttons collapse into a menu button.
-import { FlaskConical, LayoutDashboard, Menu, Vault, X } from "lucide-react";
+import { FlaskConical, LayoutDashboard, Menu, X } from "lucide-react";
 import { useEffect, useState, type MouseEvent } from "react";
 import { Link } from "react-router-dom";
+import { BrandMark } from "../components/ds";
 
 export const SECTIONS = [
   { id: "how-it-works", label: "How it works" },
@@ -47,9 +48,7 @@ export function LandingNav() {
   return (
     <header className="landing-nav">
       <Link to="/" className="brand" aria-label="Bursar home">
-        <span className="brand__logo" aria-hidden="true">
-          <Vault size={20} strokeWidth={2.5} />
-        </span>
+        <BrandMark size={40} />
         Bursar
       </Link>
 
