@@ -21,3 +21,8 @@ node_modules/
 design/reference/
 web/dist/
 agent-mcp/dist/
+
+# local working files: never commit
+review_bundle.txt
+review_diff.txt
+.claude/
