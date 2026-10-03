@@ -4,6 +4,8 @@
 
 Live on **Arbitrum Sepolia (chain id 421614)**. All contracts are verified on Arbiscan.
 
+**Try it:** [trybursar.vercel.app](https://trybursar.vercel.app/), with the landing page, [live dashboard](https://trybursar.vercel.app/dashboard) and [agent playground](https://trybursar.vercel.app/try).
+
 ---
 
 ## The problem

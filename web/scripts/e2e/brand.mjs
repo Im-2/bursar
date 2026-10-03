@@ -28,7 +28,7 @@ const head = await page.evaluate(`[document.title, document.querySelector('link[
   ...['og:title', 'og:description', 'og:image'].map((p) => document.querySelector('meta[property="' + p + '"]')?.content ?? null)]`);
 assert(head[0] === "Bursar - spending limits for AI agents", `title is "${head[0]}"`);
 assert(head[1] === "/bursar-mark.svg" && head[2] === "image/svg+xml", "favicon is /bursar-mark.svg (image/svg+xml)");
-assert(head[3] === "Bursar - spending limits for AI agents" && !!head[4] && head[5] === "/bursar-mark.png", "og:title, og:description and og:image (/bursar-mark.png) are set");
+assert(head[3] === "Bursar - spending limits for AI agents" && !!head[4] && head[5] === "https://trybursar.vercel.app/bursar-mark.png", "og:title, og:description and og:image (absolute URL) are set");
 const icon = await page.evaluate("fetch('/bursar-mark.svg').then((r) => r.status + ' ' + r.headers.get('content-type'))");
 const png = await page.evaluate("fetch('/bursar-mark.png').then((r) => r.status + ' ' + r.headers.get('content-type'))");
 assert(icon.startsWith("200 image/svg+xml") && png.startsWith("200 image/png"), `both files are served (${icon}; ${png})`);
