@@ -40,18 +40,13 @@ Reason codes use the dashboard's label prefixes (`DATA_`/`API_`, `SUBAGENT_`, `H
 ```bash
 cd agent-mcp
 npm install
+npm run build        # compiles src/ to dist/ (gitignored)
 ```
 
-1. Put the demo agent's key in the repo-root `.env` as `AGENT_PRIVATE_KEY=0x…`; see [`agent/README.md`](../agent/README.md). The agent also needs a little Arbitrum Sepolia ETH for gas.
-2. Connect it to Claude Code from the **repo root**. The example config [`.mcp.json`](.mcp.json) holds no key or secret:
-
-   ```bash
-   claude --mcp-config agent-mcp/.mcp.json
-   ```
-
-   Or copy its `bursar` entry into a project-level `.mcp.json`. Check it's connected with `/mcp`. The tools appear as `mcp__bursar__pay` and so on.
-
-3. Without Claude Code, call one tool at a time with the official MCP client (from the repo root):
+1. Put the demo agent's key in the repo-root `.env` as `AGENT_PRIVATE_KEY=0x…`; see [`agent/README.md`](../agent/README.md). The agent also needs a little Arbitrum Sepolia ETH for gas. The server reads `.env` itself at startup, so no secret goes in any MCP config.
+2. The server is registered for this project in the repo-root [`.mcp.json`](../.mcp.json), which holds no key or secret. Start Claude Code from the **repo root** with `claude`, approve the `bursar` server when asked, and check it with `/mcp`. The tools appear as `mcp__bursar__pay` and so on.
+3. To check the server without Claude Code: `node agent-mcp/scripts/check-server.mjs` (from the repo root). It starts it exactly as `.mcp.json` says, lists the tools and runs the two read-only ones.
+4. Without Claude Code, call one tool at a time with the official MCP client (from the repo root):
 
    ```bash
    node agent-mcp/scripts/call-tool.mjs get_policy_and_budget '{}'

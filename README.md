@@ -257,11 +257,12 @@ npm run owner      # approve + release (signs with the Foundry keystore)
 ```bash
 cd agent-mcp
 npm install
+npm run build
 cd ..
-claude --mcp-config agent-mcp/.mcp.json
+claude
 ```
 
-In Claude Code, check that `/mcp` lists `bursar`, then give it a task such as: *"Use the bursar tools. Check your policy and budget, list the vendors, then buy one call from the data API at its listed price with reason DATA_MARKET_PRICES."* To skip Claude Code, run a single tool call with `node agent-mcp/scripts/call-tool.mjs pay '{"recipient":"data-api","amount":"20","reason":"DATA_MARKET_PRICES"}'`. See [`agent-mcp/README.md`](agent-mcp/README.md).
+The server is registered for this project in the repo-root `.mcp.json` (no secrets; it reads the agent key from `.env`). Approve `bursar` when Claude Code asks, check that `/mcp` shows it connected, then give it a task such as: *"Use the bursar tools. Check your policy and budget, list the vendors, then buy one call from the data API at its listed price with reason DATA_MARKET_PRICES."* To skip Claude Code, run a single tool call with `node agent-mcp/scripts/call-tool.mjs pay '{"recipient":"data-api","amount":"20","reason":"DATA_MARKET_PRICES"}'`. See [`agent-mcp/README.md`](agent-mcp/README.md).
 
 ### Run the dashboard
 

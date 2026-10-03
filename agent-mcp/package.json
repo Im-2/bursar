@@ -4,7 +4,9 @@
   "type": "module",
   "description": "MCP server that lets an AI agent spend from a Bursar vault within its on-chain policy",
   "scripts": {
-    "start": "tsx src/server.ts",
+    "build": "tsc -p tsconfig.build.json",
+    "start": "node dist/server.js",
+    "dev": "tsx src/server.ts",
     "typecheck": "tsc --noEmit",
     "abi": "node -e \"require('fs').copyFileSync('../agent/src/abi.ts','src/abi.ts')\""
   },

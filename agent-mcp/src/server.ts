@@ -330,5 +330,13 @@ server.registerTool(
   },
 );
 
+// Cross-check the public config against the chain before accepting any tool call.
+const onchainToken = getAddress(await publicClient.readContract({ ...vault, functionName: "token" }));
+const envToken = process.env.TOKEN_ADDRESS?.trim();
+if (onchainToken !== TOKEN || (envToken && isAddress(envToken) && getAddress(envToken) !== TOKEN)) {
+  log(`token mismatch: vault ${VAULT} uses ${onchainToken}, config says ${TOKEN}${envToken ? ` / .env ${envToken}` : ""}; refusing to start.`);
+  process.exit(1);
+}
+
 await server.connect(new StdioServerTransport());
 log(`ready: agent ${account.address}, vault ${VAULT}`);

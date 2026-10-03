@@ -20,3 +20,4 @@ node_modules/
 # third-party reference imagery: never commit
 design/reference/
 web/dist/
+agent-mcp/dist/
