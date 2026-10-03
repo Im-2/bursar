@@ -1,11 +1,12 @@
 // Wallet + transaction UI pieces, built on the design-system components.
 import { useState, type ReactNode } from "react";
+import { Wallet } from "lucide-react";
 import { formatEther } from "viem";
 import { chain, txUrl } from "../lib/chain";
 import { shortAddr, shortHash } from "../lib/format";
 import type { TxState } from "../lib/tx";
 import { useWallet } from "../lib/wallet";
-import { Badge, Button } from "./ds";
+import { Badge, Button, type Tone } from "./ds";
 
 export function formatEth(wei: bigint, digits = 5): string {
   const [i, f = ""] = formatEther(wei).split(".");
@@ -24,22 +25,22 @@ export function WalletButton({ compact = false }: { compact?: boolean }) {
   }
   if (!w.onRightChain) {
     return (
-      <span className="wallet-account">
+      <span className="ds-actions">
         <Button onClick={w.switchChain} data-testid="switch-network">
           Switch to {chain.name}
         </Button>
-        <Button className="ds-button--small ds-button--ghost" onClick={w.disconnect} data-testid="disconnect">
+        <Button className="ds-button--small ds-button--secondary" onClick={w.disconnect} data-testid="disconnect">
           Disconnect
         </Button>
       </span>
     );
   }
   return (
-    <span className="wallet-account" data-testid="wallet-account" title={`${w.account}${w.connectorName ? ` via ${w.connectorName}` : ""}`}>
-      <Badge tone="green">Connected</Badge>
+    <span className="wallet-chip wallet-account" data-testid="wallet-account" title={`${w.account}${w.connectorName ? ` via ${w.connectorName}` : ""}`}>
+      <Wallet size={15} aria-hidden="true" />
       <span>{compact ? shortAddr(w.account) : w.account}</span>
-      {w.balance !== null && <span className="wallet-account__bal" data-testid="wallet-balance">{formatEth(w.balance)} ETH</span>}
-      <Button className="ds-button--small ds-button--ghost" onClick={w.disconnect} data-testid="disconnect">
+      {w.balance !== null && <span className="wallet-chip__bal" data-testid="wallet-balance">{formatEth(w.balance)} ETH</span>}
+      <Button className="ds-button--small ds-button--secondary" onClick={w.disconnect} data-testid="disconnect">
         Disconnect
       </Button>
     </span>
@@ -55,7 +56,7 @@ export function NetworkBanner() {
       <span>
         Your wallet is on chain {w.chainId ?? "?"}. Bursar runs on <strong>{chain.name}</strong> (chain {chain.id}).
       </span>
-      <Button className="ds-button--small ds-button--lime" onClick={w.switchChain}>
+      <Button className="ds-button--small ds-button--ok" onClick={w.switchChain}>
         Switch network
       </Button>
       {w.error && <span className="network-banner__err">{w.error}</span>}
@@ -63,13 +64,13 @@ export function NetworkBanner() {
   );
 }
 
-const STATUS_TEXT: Record<TxState["status"], [string, "gray" | "amber" | "green" | "red" | "lime"]> = {
-  idle: ["", "gray"],
-  simulating: ["Simulating", "gray"],
-  signing: ["Confirm in wallet", "amber"],
-  pending: ["Pending", "amber"],
-  confirmed: ["Confirmed", "green"],
-  failed: ["Failed", "red"],
+const STATUS_TEXT: Record<TxState["status"], [string, Tone]> = {
+  idle: ["", "neutral"],
+  simulating: ["Simulating", "neutral"],
+  signing: ["Confirm in wallet", "pending"],
+  pending: ["Pending", "pending"],
+  confirmed: ["Confirmed", "ok"],
+  failed: ["Failed", "blocked"],
 };
 
 /** Inline status line for one action: badge, message, decoded error name, Arbiscan link. */

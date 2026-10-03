@@ -104,13 +104,17 @@ Amounts are shown in human units (6 decimals) with thousands separators. Hover a
 
 ## Design system
 
-`src/styles/design-system.css` (tokens and base styles) and `src/components/ds.tsx` (Card, Badge, Button, SectionBar, Stat, KV, Table) are shared, so the landing page can reuse them.
+Pastel neo-brutalism. It lives in shared files so the landing page can reuse it:
+- **`src/styles/design-system.css`:** tokens and base styles.
+- **`src/components/ds.tsx`:** Card, Badge (status chip), Button, IconButton, IconBox, StatBox, Sparkline, SectionTitle, Table, KV, EmptyState, Skeleton.
+- **`src/components/AppShell.tsx`:** Sidebar and top bar.
 
-- **Colors:** black `#000`, page `#F2F2F2`, card `#FFF`, lime `#D4FF00`, amber `#FFC148`, green `#00D46E`, blue `#0352A1`, gray `#465063`.
-- **Font:** JetBrains Mono from Google Fonts, with tabular numbers.
-- **Shapes:** square corners, 4px black borders, and no shadows or gradients.
-- **Tables:** collapse into labelled blocks below 760px.
-- **Accessibility:** keyboard focus is always visible as a 3px blue outline.
+The look:
+- **Shape:** 2–3px black outlines, 6–8px corners, and hard offset shadows (4px 4px, no blur). Buttons shift into their shadow on hover and lose it when pressed.
+- **Palette:** cream canvas `#FFF4DC`, mint sidebar `#A8D8B9`, mustard hero `#F5C242`, pink stat card `#F8B8F0`, white cards, black ink. Status accents are ok `#8FE3B0`, pending `#FFD27A` and blocked `#FF9F9F`, always with black text. Soft blue, peach and pink diagonal stripes run behind the app frame.
+- **Type and icons:** IBM Plex Mono from Google Fonts, with sentence-case headings, small muted labels and tabular numbers. Icons are [Lucide](https://lucide.dev).
+- **Layout:** a mint sidebar (Overview, Agents, Tasks, Approvals, Escrows, Activity, Try it, Settings) beside a top bar showing network, status, "last updated" and the wallet. Below 900px the sidebar becomes a drawer opened from a menu button.
+- **Accessibility:** a visible 3px blue focus ring, AA-contrast text, and reduced motion respected.
 
 ## Code map
 

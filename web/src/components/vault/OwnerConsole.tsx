@@ -300,7 +300,7 @@ function SettingsForm({ ctx }: { ctx: VaultCtx }) {
         <div className="ds-actions">
           <span className="ds-label">Vault is {d.paused ? "paused" : "live"}</span>
           {d.paused ? (
-            <Button className="ds-button--lime" onClick={() => pauseTx.runVault("Unpause vault", "unpause", [])} disabled={pauseTx.busy} data-testid="unpause">
+            <Button className="ds-button--ok" onClick={() => pauseTx.runVault("Unpause vault", "unpause", [])} disabled={pauseTx.busy} data-testid="unpause">
               Unpause
             </Button>
           ) : (

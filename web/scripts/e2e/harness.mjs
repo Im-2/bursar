@@ -62,8 +62,8 @@ const shim = (wallets) => `(() => {
 const icon = (letter, bg) =>
   "data:image/svg+xml," + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" fill="${bg}"/><text x="16" y="22" font-family="monospace" font-weight="700" font-size="16" fill="#000" text-anchor="middle">${letter}</text></svg>`);
 export const TEST_WALLETS = [
-  { uuid: "8f3c1d2e-0000-4000-8000-000000000001", name: "Bursar Test Wallet", icon: icon("T", "#D4FF00"), rdns: "xyz.bursar.testwallet" },
-  { uuid: "8f3c1d2e-0000-4000-8000-000000000002", name: "Second Test Wallet", icon: icon("2", "#FFC148"), rdns: "xyz.bursar.testwallet2" },
+  { uuid: "8f3c1d2e-0000-4000-8000-000000000001", name: "Bursar Test Wallet", icon: icon("T", "#F5C242"), rdns: "xyz.bursar.testwallet" },
+  { uuid: "8f3c1d2e-0000-4000-8000-000000000002", name: "Second Test Wallet", icon: icon("2", "#F8B8F0"), rdns: "xyz.bursar.testwallet2" },
 ];
 
 /** Launches Chrome with the wallet shim. `startChainId` lets tests begin on the wrong network. */

@@ -58,13 +58,13 @@ function BuyData({ ctx, task, addrs }: { ctx: VaultCtx; task: Task; addrs: DemoA
       paid ? (
         <div className="scenario__result scenario__result--ok" data-testid="result-a">
           <p>
-            <Badge tone="green">Paid</Badge> <Amount raw={amount} d={d} /> went straight to the data vendor <Addr a={addrs.vendor} />: within the per-tx cap, below the approval threshold, to an allowlisted recipient. No human needed.
+            <Badge tone="ok">Paid</Badge> <Amount raw={amount} d={d} /> went straight to the data vendor <Addr a={addrs.vendor} />: within the per-tx cap, below the approval threshold, to an allowlisted recipient. No human needed.
           </p>
         </div>
       ) : queued ? (
         <div className="scenario__result" data-testid="result-a">
           <p>
-            <Badge tone="amber">Queued</Badge> Your approval threshold is 0, so every payment waits for you.
+            <Badge tone="pending">Queued</Badge> Your approval threshold is 0, so every payment waits for you.
           </p>
         </div>
       ) : null,
@@ -151,15 +151,15 @@ function EscrowScenario({ ctx, task, letter, title, demonstrates, payee, payeeLa
         <div className="scenario__result" data-testid={`result-${testId}`}>
           {escrow?.status === 2 ? (
             <p>
-              <Badge tone="green">Released</Badge> Escrow #{escrowId.toString()} paid <Amount raw={amount} d={d} /> to the {payeeLabel.toLowerCase()} <Addr a={payee} />, only after you, the owner, signed off.
+              <Badge tone="ok">Released</Badge> Escrow #{escrowId.toString()} paid <Amount raw={amount} d={d} /> to the {payeeLabel.toLowerCase()} <Addr a={payee} />, only after you, the owner, signed off.
             </p>
           ) : (
             <>
               <p>
-                <Badge tone="lime">Locked</Badge> Escrow #{escrowId.toString()}: <Amount raw={amount} d={d} /> moved from the task budget into escrow. The agent can't release it; only the owner (or an approver) can, or it refunds to the vault after the deadline.
+                <Badge tone="info">Locked</Badge> Escrow #{escrowId.toString()}: <Amount raw={amount} d={d} /> moved from the task budget into escrow. The agent can't release it; only the owner (or an approver) can, or it refunds to the vault after the deadline.
               </p>
               {ctx.isOwner && (
-                <VaultAction ctx={ctx} label="2 · Release as owner" functionName="releaseEscrow" args={[escrowId]} tone="lime" testId={`release-${testId}`} />
+                <VaultAction ctx={ctx} label="2 · Release as owner" functionName="releaseEscrow" args={[escrowId]} tone="ok" testId={`release-${testId}`} />
               )}
             </>
           )}
@@ -188,9 +188,9 @@ function OverLimit({ ctx, task, addrs }: { ctx: VaultCtx; task: Task; addrs: Dem
       err?.errorName ? (
         <div className="scenario__result scenario__result--blocked" data-testid="result-d">
           <p>
-            <Badge tone="red">Blocked</Badge> The vault rejected it with <code className="tx-status__error" data-testid="result-d-error">{err.errorName}()</code>. The amount <Amount raw={amount} d={d} /> is over the per-tx cap of <Amount raw={policy.perTxCap} d={d} />.
+            <Badge tone="blocked">Blocked</Badge> The vault rejected it with <code className="tx-status__error" data-testid="result-d-error">{err.errorName}()</code>. The amount <Amount raw={amount} d={d} /> is over the per-tx cap of <Amount raw={policy.perTxCap} d={d} />.
           </p>
-          <p className="dash-muted">
+          <p className="ds-muted">
             Nothing was signed or sent. Vault balance is still <Amount raw={before.balance} d={d} /> and the task still has <Amount raw={before.remaining} d={d} /> left. A compromised agent key hits the same wall.
           </p>
         </div>
@@ -262,20 +262,20 @@ function NeedsApproval({ ctx, task, addrs }: { ctx: VaultCtx; task: Task; addrs:
         <div className="scenario__result" data-testid="result-e">
           {request?.status === 2 ? (
             <p>
-              <Badge tone="green">Approved</Badge> Request #{requestId.toString()} executed: <Amount raw={amount} d={d} /> paid to <Addr a={to} /> with your sign-off. Approvals don't use the agent's daily cap.
+              <Badge tone="ok">Approved</Badge> Request #{requestId.toString()} executed: <Amount raw={amount} d={d} /> paid to <Addr a={to} /> with your sign-off. Approvals don't use the agent's daily cap.
             </p>
           ) : request?.status === 3 ? (
             <p>
-              <Badge tone="red">Rejected</Badge> Request #{requestId.toString()} was rejected. No funds moved.
+              <Badge tone="blocked">Rejected</Badge> Request #{requestId.toString()} was rejected. No funds moved.
             </p>
           ) : (
             <>
               <p>
-                <Badge tone="amber">Pending</Badge> Request #{requestId.toString()} is in the approval queue ({mode === "threshold" ? "above the approval threshold" : "recipient not allowlisted"}). No funds moved yet.
+                <Badge tone="pending">Pending</Badge> Request #{requestId.toString()} is in the approval queue ({mode === "threshold" ? "above the approval threshold" : "recipient not allowlisted"}). No funds moved yet.
               </p>
               {ctx.isOwner && (
                 <div className="ds-actions ds-actions--stack">
-                  <VaultAction ctx={ctx} label="2 · Approve as owner" functionName="approveRequest" args={[requestId]} tone="lime" testId="approve-e" />
+                  <VaultAction ctx={ctx} label="2 · Approve as owner" functionName="approveRequest" args={[requestId]} tone="ok" testId="approve-e" />
                   <VaultAction ctx={ctx} label="Reject" functionName="rejectRequest" args={[requestId]} testId="reject-e" />
                 </div>
               )}

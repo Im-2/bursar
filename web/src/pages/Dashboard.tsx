@@ -1,50 +1,18 @@
 // /dashboard: live view of a vault (the demo vault by default, any vault via ?vault=0x…).
-// Stage A panels are read-only for everyone; Stage B owner actions appear only for the connected owner.
+// Panels are read-only for everyone; owner actions appear only for the connected owner.
+import { Search } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { Badge, Button, SectionBar } from "../components/ds";
+import { AppShell } from "../components/AppShell";
+import { Button, Card, SectionTitle, Skeleton } from "../components/ds";
 import { OwnerConsole } from "../components/vault/OwnerConsole";
-import { Activity, Addr, Agents, Escrows, Queue, Tasks, useNow, useVaultCtx, VaultOverview, type VaultCtx } from "../components/vault/panels";
+import { Activity, Addr, Agents, Escrows, Queue, Tasks, useVaultCtx, VaultOverview, type VaultCtx } from "../components/vault/panels";
 import { NetworkBanner, WalletButton } from "../components/web3";
 import { addressUrl, chain, DEPLOYMENT, parseAddress, POLL_MS } from "../lib/chain";
-import { formatAgo, shortAddr } from "../lib/format";
+import { shortAddr } from "../lib/format";
 import { useVault, type VaultData } from "../lib/useVault";
 import { useWallet } from "../lib/wallet";
 import "./dashboard.css";
-
-export function SiteHeader({ d, error, title }: { d: VaultData | null; error: string | null; title: string }) {
-  const now = useNow();
-  const age = d ? (now - d.fetchedAt) / 1000 : 0;
-  const stale = d && age > (POLL_MS / 1000) * 3;
-  return (
-    <header className="dash-header">
-      <div className="dash-header__inner">
-        <div className="dash-header__left">
-          <Link to="/dashboard" className="dash-header__brand">BURSAR</Link>
-          <div className="dash-header__sub">{title}</div>
-        </div>
-        <nav className="dash-nav" aria-label="Main">
-          <Link to="/dashboard">Dashboard</Link>
-          <Link to="/try">Playground</Link>
-        </nav>
-        <div className="dash-header__meta">
-          <Badge tone="black">{chain.name}</Badge>
-          {d ? d.paused ? <Badge tone="red">Paused</Badge> : <Badge tone="green">Live</Badge> : <Badge tone="gray">Connecting</Badge>}
-          <span className={`dash-updated ${stale || error ? "dash-updated--stale" : ""}`} aria-live="polite">
-            {d ? (
-              <>
-                <span className={stale || error ? "" : "ds-pulse"}>●</span> updated {formatAgo(age)} · block {d.blockNumber.toString()}
-              </>
-            ) : (
-              "loading…"
-            )}
-          </span>
-          <WalletButton compact />
-        </div>
-      </div>
-    </header>
-  );
-}
 
 function OwnerSection({ ctx }: { ctx: VaultCtx }) {
   const w = useWallet();
@@ -56,17 +24,17 @@ function OwnerSection({ ctx }: { ctx: VaultCtx }) {
     hint = (
       <>
         Read-only. You're connected as {shortAddr(w.account)}, but the owner is <Addr a={d.owner} />.{" "}
-        {ctx.isApprover ? "As the approver you can release escrows below." : "Connect as owner to manage this vault."}
-        {" "}Want your own? <Link to="/try">Create a vault in the playground</Link>.
+        {ctx.isApprover ? "As the approver you can release escrows below." : "Connect as owner to manage this vault."}{" "}
+        Want your own? <Link to="/try">Create a vault in the playground</Link>.
       </>
     );
   return (
-    <>
-      <SectionBar eyebrow="Owner only" title="Owner console" aside={<WalletButton />} />
-      <div className="ds-container" data-testid="owner-console">
+    <section>
+      <SectionTitle id="settings" title="Settings" sub="Owner console: policies, tasks, allowlists, pause" aside={<WalletButton />} />
+      <div data-testid="owner-console">
         {hint ? <div className="ds-note" data-testid="owner-hint">{hint}</div> : <OwnerConsole ctx={ctx} />}
       </div>
-    </>
+    </section>
   );
 }
 
@@ -85,9 +53,11 @@ function VaultPicker({ current }: { current: string }) {
   return (
     <form className="vault-picker" onSubmit={go} aria-label="View another vault">
       <input className="ds-input" value={value} onChange={(e) => setValue(e.target.value)} placeholder="View another vault: 0x…" aria-label="Vault address" />
-      <Button className="ds-button--small" type="submit">View</Button>
+      <Button className="ds-button--small" type="submit">
+        <Search size={15} aria-hidden="true" /> View
+      </Button>
       {current !== DEPLOYMENT.vault && (
-        <Button className="ds-button--small ds-button--ghost" type="button" onClick={() => { setValue(""); setParams({}); }}>
+        <Button className="ds-button--small ds-button--secondary" type="button" onClick={() => { setValue(""); setParams({}); }}>
           Demo vault
         </Button>
       )}
@@ -100,28 +70,55 @@ function Body({ d, refresh }: { d: VaultData; refresh: () => void }) {
   const ctx = useVaultCtx(d, refresh);
   return (
     <>
-      <div className="ds-container dash-top">
+      <section id="overview" className="overview-anchor">
         <VaultOverview d={d} />
-      </div>
-      <OwnerSection ctx={ctx} />
-      <SectionBar eyebrow="Policy enforced onchain" title="Agents" />
-      <div className="ds-container">
+      </section>
+      <section>
+        <SectionTitle id="agents" title="Agents" sub="Policies enforced by the vault contract" />
         <Agents ctx={ctx} />
-      </div>
-      <SectionBar eyebrow="Reserved budgets" title="Tasks" />
-      <div className="ds-container">
+      </section>
+      <section>
+        <SectionTitle id="tasks" title="Tasks" sub="Reserved budgets with expiry" />
         <Tasks ctx={ctx} />
-      </div>
-      <SectionBar eyebrow="Waiting on a human" title="Approvals & escrow" />
-      <div className="ds-container dash-stack">
+      </section>
+      <section>
+        <SectionTitle id="approvals" title="Approvals" sub="Payments waiting for the owner" />
         <Queue ctx={ctx} />
+      </section>
+      <section>
+        <SectionTitle id="escrows" title="Escrows" sub="Locked until released, or refunded after the deadline" />
         <Escrows ctx={ctx} />
-      </div>
-      <SectionBar eyebrow="Audit trail" title="Activity" />
-      <div className="ds-container">
+      </section>
+      <section>
+        <SectionTitle id="activity" title="Activity" sub="Audit trail from the vault's event log" />
         <Activity d={d} />
-      </div>
+      </section>
+      <OwnerSection ctx={ctx} />
     </>
+  );
+}
+
+function LoadingSkeleton() {
+  return (
+    <div className="overview-grid" aria-busy="true" aria-label="Loading vault">
+      <Card tone="mustard">
+        <div className="ds-stack">
+          <Skeleton height={28} width="45%" />
+          <Skeleton height={16} width="60%" />
+          <div className="stat-row">
+            {[0, 1, 2, 3].map((i) => (
+              <Skeleton key={i} height={56} />
+            ))}
+          </div>
+        </div>
+      </Card>
+      <Card tone="pink">
+        <div className="ds-stack">
+          <Skeleton height={20} width="50%" />
+          <Skeleton height={72} />
+        </div>
+      </Card>
+    </div>
   );
 }
 
@@ -132,44 +129,33 @@ export default function Dashboard() {
   const { data, error, loading, refresh } = useVault(vaultAddr);
 
   return (
-    <>
-      <SiteHeader d={data} error={error} title={vaultAddr === DEPLOYMENT.vault ? "Demo vault dashboard" : "Vault dashboard"} />
-      <main className="dash-main" aria-busy={loading}>
-        <div className="ds-container">
-          <NetworkBanner />
-          <VaultPicker current={vaultAddr ?? ""} />
-        </div>
-        {!vaultAddr && (
-          <div className="ds-container">
-            <div className="ds-alert ds-alert--error" role="alert">That vault address isn't a valid address.</div>
-          </div>
-        )}
-        {error && (
-          <div className="ds-container">
-            <div className="ds-alert ds-alert--error" role="alert">
-              {data ? `RPC error: ${error}. Showing the last good data; retrying automatically.` : `Couldn't read this vault: ${error}. Is it a Bursar vault on ${chain.name}? Retrying automatically.`}
-            </div>
-          </div>
-        )}
-        {vaultAddr && !data && !error && (
-          <div className="ds-container">
-            <div className="ds-alert dash-loading">
-              <span className="ds-pulse">Reading the vault from {chain.name}…</span>
-            </div>
-          </div>
-        )}
-        {data && <Body d={data} refresh={refresh} />}
-      </main>
-      <footer className="dash-footer">
-        <div className="ds-container">
+    <AppShell
+      title={vaultAddr === DEPLOYMENT.vault ? "Demo vault" : "Vault dashboard"}
+      d={data}
+      error={error}
+      footer={
+        <>
           Every number is read from {chain.name} · refreshes every {POLL_MS / 1000}s · writes are signed in your own wallet ·{" "}
           {vaultAddr && (
             <a href={addressUrl(vaultAddr)} target="_blank" rel="noreferrer">
               vault on Arbiscan
             </a>
           )}
-        </div>
-      </footer>
-    </>
+        </>
+      }
+    >
+      <div className="ds-stack">
+        <NetworkBanner />
+        <VaultPicker current={vaultAddr ?? ""} />
+        {!vaultAddr && <div className="ds-alert ds-alert--error" role="alert">That vault address isn't a valid address.</div>}
+        {error && (
+          <div className="ds-alert ds-alert--error" role="alert">
+            {data ? `RPC error: ${error}. Showing the last good data; retrying automatically.` : `Couldn't read this vault: ${error}. Is it a Bursar vault on ${chain.name}? Retrying automatically.`}
+          </div>
+        )}
+      </div>
+      {vaultAddr && !data && !error && loading && <LoadingSkeleton />}
+      {data && <Body d={data} refresh={refresh} />}
+    </AppShell>
   );
 }

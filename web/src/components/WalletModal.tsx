@@ -1,9 +1,10 @@
 // Connect-wallet modal in the Bursar design system (no third-party modal UI).
+import { Download, Smartphone, X } from "lucide-react";
 import QRCode from "qrcode";
 import { useEffect, useRef, useState } from "react";
 import type { Connector } from "wagmi";
 import { useWallet, useWalletOptions, WALLETCONNECT_PROJECT_ID } from "../lib/wallet";
-import { Badge, Button } from "./ds";
+import { Badge, Button, IconButton } from "./ds";
 
 function WalletIcon({ connector }: { connector: Connector }) {
   if (connector.icon) return <img src={connector.icon} alt="" className="wallet-option__icon" width={32} height={32} />;
@@ -51,7 +52,7 @@ function WalletConnectPanel({ connector }: { connector: Connector }) {
       <p className="field__hint">Scan with a WalletConnect-compatible wallet on your phone, then approve the connection there.</p>
       {uri && (
         <Button
-          className="ds-button--small ds-button--ghost"
+          className="ds-button--small ds-button--secondary"
           onClick={() => {
             navigator.clipboard?.writeText(uri).then(() => setCopied(true), () => setCopied(false));
           }}
@@ -88,9 +89,9 @@ export function WalletModal() {
       <div className="modal" role="dialog" aria-modal="true" aria-labelledby="wallet-modal-title" ref={dialogRef} data-testid="wallet-modal">
         <div className="modal__bar">
           <h2 id="wallet-modal-title" className="modal__title">Connect a wallet</h2>
-          <button type="button" className="modal__close" onClick={w.closeModal} aria-label="Close">
-            ✕
-          </button>
+          <IconButton label="Close" onClick={w.closeModal}>
+            <X size={18} />
+          </IconButton>
         </div>
         <div className="modal__body">
           <p className="modal__lead">
@@ -104,10 +105,10 @@ export function WalletModal() {
           )}
 
           <div className="ds-label modal__section">
-            Browser wallets {opts.browser.length > 0 && <Badge tone="green">{opts.browser.length} detected</Badge>}
+            Browser wallets {opts.browser.length > 0 && <Badge tone="ok">{opts.browser.length} detected</Badge>}
           </div>
           {noBrowserWallet ? (
-            <p className="dash-muted">No browser wallet detected in this browser.</p>
+            <p className="ds-muted">No browser wallet detected in this browser.</p>
           ) : (
             <div className="wallet-list" data-testid="wallet-list">
               {opts.browser.map((c) => (
@@ -133,12 +134,12 @@ export function WalletModal() {
                 data-testid="wallet-option-walletconnect"
                 aria-expanded={wcOpen}
               >
-                <span className="wallet-option__icon wallet-option__icon--fallback" aria-hidden="true">WC</span>
+                <span className="wallet-option__icon wallet-option__icon--fallback" aria-hidden="true"><Smartphone size={20} /></span>
                 <span className="wallet-option__name">WalletConnect</span>
                 <span className="wallet-option__note">mobile &amp; other wallets</span>
               </button>
             ) : (
-              !WALLETCONNECT_PROJECT_ID && <p className="dash-muted">WalletConnect is not configured for this deployment.</p>
+              !WALLETCONNECT_PROJECT_ID && <p className="ds-muted">WalletConnect is not configured for this deployment.</p>
             )}
             {opts.coinbase && (
               <WalletOption connector={opts.coinbase} note="extension or smart wallet" busy={w.connecting} onPick={() => w.connectWith(opts.coinbase!)} />
@@ -148,8 +149,8 @@ export function WalletModal() {
 
           {noBrowserWallet && (
             <div className="install-wallet" data-testid="install-wallet">
-              <div className="ds-label">Install a wallet</div>
-              <p className="dash-muted">Add a browser extension, then reload this page.</p>
+              <div className="ds-row"><Download size={18} aria-hidden="true" /><strong>Install a wallet</strong></div>
+              <p className="ds-muted">Add a browser extension, then reload this page.</p>
               <div className="ds-actions">
                 <a className="ds-button ds-button--small" href="https://metamask.io/download/" target="_blank" rel="noreferrer">
                   MetaMask ↗

@@ -4,7 +4,8 @@ import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } 
 import { Link } from "react-router-dom";
 import { keccak256, parseEventLogs, stringToHex, toHex, type Address } from "viem";
 import { factoryAbi, tokenAbi, vaultAbi } from "../abi";
-import { Badge, Button, Card, SectionBar, type Tone } from "../components/ds";
+import { AppShell } from "../components/AppShell";
+import { Badge, Button, Card, SectionTitle, type Tone } from "../components/ds";
 import { Scenarios } from "../components/playground/Scenarios";
 import { parseAmount } from "../components/vault/OwnerConsole";
 import { Activity, Addr, Amount, Escrows, Queue, useVaultCtx, VaultOverview, type VaultCtx } from "../components/vault/panels";
@@ -15,7 +16,6 @@ import { useDemoAddresses, useMyVaults, useWalletToken, type DemoAddresses } fro
 import { useTx } from "../lib/tx";
 import { useVault, type VaultData } from "../lib/useVault";
 import { useWallet } from "../lib/wallet";
-import { SiteHeader } from "./Dashboard";
 import "./dashboard.css";
 import "./playground.css";
 
@@ -28,7 +28,7 @@ const FAUCETS = [
 ] as const;
 
 type StepState = "done" | "current" | "locked";
-const STEP_BADGE: Record<StepState, [string, Tone]> = { done: ["Done", "green"], current: ["Now", "amber"], locked: ["Locked", "gray"] };
+const STEP_BADGE: Record<StepState, [string, Tone]> = { done: ["Done", "ok"], current: ["Now", "pending"], locked: ["Locked", "neutral"] };
 
 function Step({ n, title, state, children }: { n: number; title: string; state: StepState; children: ReactNode }) {
   const [label, tone] = STEP_BADGE[state];
@@ -60,7 +60,7 @@ function WalletStep() {
             Gas balance: <strong data-testid="pg-eth">{formatEth(w.balance)} ETH</strong> on {chain.name}.
           </p>
           {w.balance < LOW_ETH && (
-            <div className="ds-note ds-note--amber" data-testid="faucets">
+            <div className="ds-note ds-note--pending" data-testid="faucets">
               <strong>Low on test ETH.</strong> You need a little for gas (about 0.0005 ETH covers the whole playground). Free faucets:
               <ul className="pg-links">
                 {FAUCETS.map(([name, url]) => (
@@ -236,7 +236,7 @@ function SetupStep({ ctx, addrs, updateAddrs, myTask }: {
       <form className="ds-form pg-substep" onSubmit={savePolicy} data-testid="form-policy">
         <div className="pg-substep__head">
           <span className="ds-label">3a · Register yourself as an agent</span>
-          {mine?.policy.active ? <Badge tone="green">Active · {decodeBytes32(mine.policy.role)}</Badge> : <Badge tone="gray">Not yet</Badge>}
+          {mine?.policy.active ? <Badge tone="ok">Active · {decodeBytes32(mine.policy.role)}</Badge> : <Badge tone="neutral">Not yet</Badge>}
         </div>
         <p className="field__hint">In the playground you play both roles: owner of the vault and its agent. In production the agent is a separate key.</p>
         <div className="ds-form__row">
@@ -252,7 +252,7 @@ function SetupStep({ ctx, addrs, updateAddrs, myTask }: {
       <form className="ds-form pg-substep" onSubmit={allow} data-testid="form-allow">
         <div className="pg-substep__head">
           <span className="ds-label">3b · Allowlist a recipient (the data vendor)</span>
-          {vendorAllowed ? <Badge tone="green">Allowlisted</Badge> : <Badge tone="gray">Not yet</Badge>}
+          {vendorAllowed ? <Badge tone="ok">Allowlisted</Badge> : <Badge tone="neutral">Not yet</Badge>}
         </div>
         <Field label="Recipient" hint="A random address by default (no known key). Change it to any address you like.">
           <input className="ds-input" value={vendor} onChange={(e) => setVendor(e.target.value)} name="vendor" />
@@ -264,7 +264,7 @@ function SetupStep({ ctx, addrs, updateAddrs, myTask }: {
       <form className="ds-form pg-substep" onSubmit={openTask} data-testid="form-open-task">
         <div className="pg-substep__head">
           <span className="ds-label">3c · Open a task (reserve a budget)</span>
-          {myTask ? <Badge tone="green">Open · {formatAmount(myTask.remaining, 6)} left</Badge> : <Badge tone="gray">Not yet</Badge>}
+          {myTask ? <Badge tone="ok">Open · {formatAmount(myTask.remaining, 6)} left</Badge> : <Badge tone="neutral">Not yet</Badge>}
         </div>
         <div className="ds-form__row">
           <Field label="Budget (mUSDG)" hint={`free in vault: ${formatAmount(d.freeBalance, 6)}`}><input className="ds-input" inputMode="decimal" value={budget} onChange={(e) => setBudget(e.target.value)} name="budget" /></Field>
@@ -285,7 +285,7 @@ function MyVaultState({ ctx, myTask }: { ctx: VaultCtx; myTask: VaultData["tasks
   const mine = d.agents.find((a) => a.address === ctx.account);
   return (
     <div className="pg-state" data-testid="my-vault-state">
-      <Card title="My vault" aside={d.paused ? <Badge tone="red">Paused</Badge> : <Badge tone="green">Live</Badge>}>
+      <Card title="My vault" aside={d.paused ? <Badge tone="blocked">Paused</Badge> : <Badge tone="ok">Live</Badge>}>
         <div className="pg-state__grid">
           <div><div className="ds-label">Balance</div><div className="pg-big"><Amount raw={d.balance} d={d} /></div></div>
           <div><div className="ds-label">Free</div><div className="pg-big"><Amount raw={d.freeBalance} d={d} /></div></div>
@@ -293,7 +293,7 @@ function MyVaultState({ ctx, myTask }: { ctx: VaultCtx; myTask: VaultData["tasks
         </div>
       </Card>
       {mine && (
-        <Card title="My agent policy" aside={mine.policy.active ? <Badge tone="green">Active</Badge> : <Badge tone="red">Revoked</Badge>}>
+        <Card title="My agent policy" aside={mine.policy.active ? <Badge tone="ok">Active</Badge> : <Badge tone="blocked">Revoked</Badge>}>
           <dl className="ds-kv">
             <dt>Per-tx cap</dt><dd><Amount raw={mine.policy.perTxCap} d={d} /></dd>
             <dt>Daily cap</dt><dd><Amount raw={mine.policy.dailyCap} d={d} /></dd>
@@ -362,13 +362,16 @@ function VaultArea({ d, refresh, addrs, updateAddrs }: {
       </Step>
       {funded && (
         <>
-          <SectionBar eyebrow="Live from the chain" title="My vault" />
-          <div className="ds-container dash-stack">
+          <section className="ds-stack">
+            <SectionTitle title="My vault, live" sub="Everything below is read from the chain" />
             <VaultOverview d={d} />
+            <SectionTitle title="Approvals" />
             <Queue ctx={ctx} />
+            <SectionTitle title="Escrows" />
             <Escrows ctx={ctx} />
+            <SectionTitle title="Activity" />
             <Activity d={d} />
-          </div>
+          </section>
         </>
       )}
     </>
@@ -396,21 +399,25 @@ export default function Playground() {
   const step2: StepState = !ready ? "locked" : d && d.balance > 0n ? "done" : "current";
 
   return (
-    <>
-      <SiteHeader d={d} error={error} title="Playground" />
-      <main className="dash-main pg">
-        <div className="ds-container">
-          <div className="pg-sandbox" role="note" data-testid="sandbox-label">
-            <span className="ds-callout">Testnet sandbox. Mock token. No real funds.</span>
-            <span className="pg-sandbox__text">
-              Create your own Bursar vault on {chain.name}, give an agent a policy, and watch the contract enforce it. Your wallet signs everything; this site never holds a key.
-            </span>
-          </div>
-          <NetworkBanner />
+    <AppShell
+      title="Playground"
+      d={d}
+      error={error}
+      footer={<>Testnet sandbox · {chain.name} · mock token, no real funds · <Link to="/dashboard">demo vault dashboard</Link></>}
+    >
+      <div className="ds-stack">
+        <div className="pg-sandbox" role="note" data-testid="sandbox-label">
+          <span className="ds-callout">Testnet sandbox. Mock token. No real funds.</span>
+          <span className="pg-sandbox__text">
+            Create your own Bursar vault on {chain.name}, give an agent a policy, and watch the contract enforce it. Your wallet signs everything; this site never holds a key.
+          </span>
         </div>
+        <NetworkBanner />
+      </div>
 
-        <SectionBar eyebrow="Try it yourself" title="Playground" />
-        <div className="ds-container pg-steps">
+      <section>
+        <SectionTitle title="Try it yourself" sub="Four steps, all on-chain, all signed by your wallet" />
+        <div className="pg-steps">
           <Step n={1} title="Connect your wallet" state={step1}>
             <WalletStep />
           </Step>
@@ -426,19 +433,12 @@ export default function Playground() {
               }}
             />
           </Step>
-          {ready && my.selected && d && addrs && (
-            <VaultArea d={d} refresh={refresh} addrs={addrs} updateAddrs={updateAddrs} />
-          )}
+          {ready && my.selected && d && addrs && <VaultArea d={d} refresh={refresh} addrs={addrs} updateAddrs={updateAddrs} />}
           {ready && my.selected && !d && !error && <div className="ds-alert"><span className="ds-pulse">Reading your vault…</span></div>}
           {ready && my.selected && error && !d && <div className="ds-alert ds-alert--error" role="alert">Couldn't read your vault: {error}. Retrying.</div>}
         </div>
-      </main>
-      <footer className="dash-footer">
-        <div className="ds-container">
-          Testnet sandbox · {chain.name} · mock token, no real funds · <Link to="/dashboard">demo vault dashboard</Link>
-        </div>
-      </footer>
-    </>
+      </section>
+    </AppShell>
   );
 }
 
