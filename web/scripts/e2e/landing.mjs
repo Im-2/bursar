@@ -68,13 +68,17 @@ for (const w of [1440, 1024, 768, 390]) {
   }
 
   // section links scroll to their sections, and the heading lands below the sticky nav
-  if (w <= 900) await page.click(".landing-nav__menu");
-  await page.click(`${w <= 900 ? "#landing-menu" : ".landing-nav__links"} a[href="#how-it-works"]`);
-  await sleep(1200);
-  const clear = await page.evaluate("[document.querySelector('#how-title').getBoundingClientRect().top, document.querySelector('.landing-nav').getBoundingClientRect().bottom]");
-  assert(clear[0] >= clear[1], `"How it works" heading is below the sticky nav (${Math.round(clear[0])} >= ${Math.round(clear[1])})`);
-  await page.evaluate("window.scrollTo(0, 0)");
-  await sleep(300);
+  for (const [id, heading, name] of [["how-it-works", "how-title", "How it works"], ["features", "features-title", "Features"]]) {
+    if (w <= 900) await page.click(".landing-nav__menu");
+    await page.click(`${w <= 900 ? "#landing-menu" : ".landing-nav__links"} a[href="#${id}"]`);
+    await sleep(1200);
+    const clear = await page.evaluate(`[document.getElementById('${heading}').getBoundingClientRect().top, document.querySelector('.landing-nav').getBoundingClientRect().bottom, location.hash]`);
+    assert(clear[0] >= clear[1] && clear[0] < 400 && clear[2] === `#${id}`, `"${name}" link scrolls its heading just below the sticky nav (${Math.round(clear[0])} >= ${Math.round(clear[1])})`);
+    await page.evaluate("window.scrollTo(0, 0)");
+    await sleep(300);
+  }
+  const ext = await page.evaluate(`(() => { const a = [...document.querySelectorAll('a')].find((x) => x.textContent.includes('View the contracts on Arbiscan')); return a && [a.href, a.target, a.rel]; })()`);
+  assert(ext && /0x822Cb3724d64870F6659ceca26534de8f5BD3840$/.test(ext[0]) && ext[1] === "_blank" && ext[2] === "noopener noreferrer", "Arbiscan link points at the demo vault, new tab, noopener noreferrer");
   if (w <= 900) await page.click(".landing-nav__menu");
   await page.click(`${w <= 900 ? "#landing-menu" : ".landing-nav__links"} a[href="#faq"]`);
   await sleep(1200);
@@ -92,7 +96,7 @@ for (const w of [1440, 1024, 768, 390]) {
   if (extraDir) await page.screenshot(`${extraDir}/landing-hero-${w}.png`, { fullPage: false });
   await page.setViewport(w, 900);
 
-  for (const [sel, name] of [["#problem", "problem"], ["#how-it-works", "how"]]) {
+  for (const [sel, name] of [["#problem", "problem"], ["#how-it-works", "how"], ["#features", "features"], ["#showcase", "showcase"]]) {
     if (tag) await shotSection(page, w, sel, toPath(new URL(`landing-${name}-${tag}.png`, SHOTS)));
     if (extraDir) await shotSection(page, w, sel, `${extraDir}/landing-${name}-${w}.png`);
   }
