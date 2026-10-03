@@ -233,3 +233,213 @@
   flex: 1 1 280px;
   max-width: 520px;
 }
+
+/* ------------------------------------------------------------------ Phase 1 additions */
+
+.paused-banner {
+  display: flex;
+  gap: var(--space-4);
+  align-items: center;
+  background: var(--c-blocked);
+  border: var(--bw) solid var(--c-line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: var(--space-4);
+  font-size: var(--fs-sm);
+}
+.spend-card__foot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: center;
+}
+.close-me {
+  margin: 0 0 var(--space-3);
+}
+.item-card__label {
+  margin: calc(-1 * var(--space-2)) 0 var(--space-3);
+}
+
+/* filter chips */
+.filter-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 2px var(--space-3);
+  min-height: 32px;
+  border: var(--bw-sm) solid var(--c-line);
+  border-radius: 999px;
+  box-shadow: 2px 2px 0 var(--c-ink);
+  background: var(--c-white);
+  color: var(--c-ink);
+  font: inherit;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  cursor: pointer;
+}
+.filter-chip:hover {
+  background: var(--c-mint);
+}
+.filter-chip[aria-pressed="true"] {
+  background: var(--c-ink);
+  color: var(--c-white);
+}
+.filter-chip__count {
+  font-weight: 500;
+  opacity: 0.8;
+}
+
+/* use-case label chips (from reason codes) */
+.usecase-chip {
+  display: inline-block;
+  margin-left: var(--space-2);
+  padding: 0 8px;
+  border: var(--bw-sm) solid var(--c-line);
+  border-radius: var(--radius-sm);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  line-height: 1.6;
+  vertical-align: middle;
+  background: var(--c-white);
+}
+.usecase-chip--data {
+  background: var(--c-sky);
+}
+.usecase-chip--subagent {
+  background: var(--c-mint);
+}
+.usecase-chip--human {
+  background: var(--c-pink);
+}
+.item-card__label .usecase-chip {
+  margin-left: 0;
+}
+.feed-item__title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1);
+}
+.feed-item--blocked {
+  border-style: dashed;
+}
+.feed-item__notpaid {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: #9c0000;
+}
+
+/* spend chart */
+.chart-legend {
+  list-style: none;
+  margin: 0 0 var(--space-3);
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+}
+.chart-legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.chart-legend__swatch {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: var(--bw-sm) solid var(--c-line);
+  border-radius: 3px;
+}
+.chart-legend__line {
+  display: inline-block;
+  width: 22px;
+  border-top: 2px dashed var(--c-ink);
+}
+.chart-wrap {
+  position: relative;
+}
+.spend-chart {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.spend-chart__grid {
+  stroke: #e6dfcd;
+  stroke-width: 1;
+}
+.spend-chart__axis {
+  stroke: var(--c-ink);
+  stroke-width: 2;
+}
+.spend-chart__tick {
+  fill: var(--c-muted);
+  font-size: 11px;
+  font-family: var(--font-mono);
+}
+.spend-chart__bar {
+  stroke: var(--c-ink);
+  stroke-width: 2;
+}
+.spend-chart__cap {
+  stroke: var(--c-ink);
+  stroke-width: 2;
+  stroke-dasharray: 6 4;
+}
+.spend-chart__cap-label {
+  fill: var(--c-ink);
+  font-size: 11px;
+  font-weight: 700;
+  font-family: var(--font-mono);
+}
+.spend-chart rect[tabindex]:focus-visible {
+  outline: 3px solid var(--c-focus);
+}
+.chart-tooltip {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+  pointer-events: none;
+  background: var(--c-white);
+  border: var(--bw-sm) solid var(--c-line);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-sm);
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--fs-xs);
+  white-space: nowrap;
+  z-index: 2;
+}
+.chart-tooltip__row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.chart-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--fs-sm);
+}
+.chart-table th,
+.chart-table td {
+  text-align: right;
+  padding: var(--space-2);
+  border-bottom: var(--bw-sm) solid var(--c-line);
+}
+.chart-table th:first-child {
+  text-align: left;
+}
+.chart-note {
+  margin: var(--space-3) 0 0;
+}
+
+/* roadmap */
+.coming-soon {
+  border-style: dashed;
+  background: var(--c-canvas);
+}

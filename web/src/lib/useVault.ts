@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { parseAbiItem, type AbiEvent, type Address, type Hex } from "viem";
 import { tokenAbi, vaultAbi } from "../abi";
-import { client, DEPLOYMENT, POLL_MS } from "./chain";
+import { client, DEPLOYMENT, KNOWN_FACTORIES, POLL_MS } from "./chain";
 
 const vaultEvents = vaultAbi.filter((x): x is Extract<(typeof vaultAbi)[number], { type: "event" }> => x.type === "event");
 const vaultCreated = parseAbiItem("event VaultCreated(address indexed owner, address indexed vault, address indexed token)");
@@ -38,15 +38,32 @@ async function getLogsChunked<T>(from: bigint, to: bigint, fetchRange: (from: bi
 }
 
 export const FEED_EVENTS = [
+  // payments
   "PaymentExecuted",
+  "PaymentBlocked",
   "PaymentQueued",
   "RequestApproved",
   "RequestRejected",
+  // escrow
   "EscrowCreated",
   "EscrowReleased",
   "EscrowRefunded",
+  // tasks
   "TaskOpened",
   "TaskClosed",
+  // configuration
+  "AgentSet",
+  "AgentRevoked",
+  "AgentRecipientSet",
+  "GlobalRecipientSet",
+  "AllowlistModeSet",
+  "ApproverSet",
+  "RequestTTLSet",
+  "Paused",
+  "Unpaused",
+  // funding
+  "Deposited",
+  "Withdrawn",
 ] as const;
 export type FeedEventName = (typeof FEED_EVENTS)[number];
 
@@ -63,7 +80,10 @@ export type FeedEvent = {
   reason?: Hex;
   taskId?: Hex;
   refId?: bigint; // request or escrow id
-  cause?: number; // PaymentQueued: 0 = allowlist, 1 = threshold
+  cause?: number; // PaymentQueued: 0 = allowlist, 1 = threshold; PaymentBlocked: 0 per-tx, 1 daily, 2 task budget
+  allowed?: boolean; // AgentRecipientSet / GlobalRecipientSet / AllowlistModeSet
+  ttl?: bigint; // RequestTTLSet
+  policy?: { perTxCap: bigint; dailyCap: bigint; approvalThreshold: bigint; active: boolean; role: Hex }; // AgentSet
 };
 
 type RawLog = {
@@ -79,16 +99,18 @@ export type VaultData = Awaited<ReturnType<typeof readSnapshot>> & {
   fetchedAt: number; // local ms, for "last updated" and ticking countdowns
 };
 
-/** Block the vault was created in: known for the demo vault, otherwise from the factory's VaultCreated event. */
+/** Block the vault was created in: known for the demo vault, otherwise from VaultCreated on any known factory. */
 async function resolveStartBlock(vaultAddr: Address): Promise<bigint> {
   if (vaultAddr === DEPLOYMENT.vault) return DEPLOYMENT.vaultDeployBlock;
   const latest = await client.getBlockNumber();
-  const logs = await getLogsChunked(DEPLOYMENT.factoryDeployBlock, latest, (fromBlock, toBlock) =>
-    client.getLogs({ address: DEPLOYMENT.factory, event: vaultCreated, args: { vault: vaultAddr }, fromBlock, toBlock }),
-  );
-  if (logs.length) return logs[0].blockNumber!;
-  // Not created by our factory: still a valid vault, scan from the factory deployment onwards.
-  return DEPLOYMENT.factoryDeployBlock;
+  for (const f of KNOWN_FACTORIES) {
+    const logs = await getLogsChunked(f.block, latest, (fromBlock, toBlock) =>
+      client.getLogs({ address: f.address, event: vaultCreated, args: { vault: vaultAddr }, fromBlock, toBlock }),
+    );
+    if (logs.length) return logs[0].blockNumber!;
+  }
+  // Not created by a known factory: still a valid vault, scan from the oldest factory deployment onwards.
+  return KNOWN_FACTORIES.reduce((m, f) => (f.block < m ? f.block : m), KNOWN_FACTORIES[0].block);
 }
 
 async function readSnapshot(vaultAddr: Address, logs: RawLog[]) {
@@ -201,6 +223,29 @@ function toFeedEvent(l: RawLog, timestamp: bigint): FeedEvent | null {
     refId: a.id as bigint | undefined,
   };
   switch (l.eventName) {
+    case "PaymentBlocked":
+      return { ...base, amount: a.amount as bigint, counterparty: a.recipient as Address, cause: Number(a.cause) };
+    case "AgentSet":
+      return { ...base, policy: a.policy as FeedEvent["policy"] };
+    case "AgentRevoked":
+      return base;
+    case "AgentRecipientSet":
+      return { ...base, counterparty: a.recipient as Address, allowed: a.allowed as boolean };
+    case "GlobalRecipientSet":
+      return { ...base, counterparty: a.recipient as Address, allowed: a.allowed as boolean };
+    case "AllowlistModeSet":
+      return { ...base, allowed: a.enforced as boolean };
+    case "ApproverSet":
+      return { ...base, counterparty: a.approver as Address };
+    case "RequestTTLSet":
+      return { ...base, ttl: a.ttl as bigint };
+    case "Paused":
+    case "Unpaused":
+      return { ...base, counterparty: a.account as Address };
+    case "Deposited":
+      return { ...base, amount: a.amount as bigint, counterparty: a.from as Address };
+    case "Withdrawn":
+      return { ...base, amount: a.amount as bigint, counterparty: a.to as Address };
     case "TaskOpened":
       return { ...base, amount: a.budget as bigint };
     case "TaskClosed":

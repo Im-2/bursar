@@ -1,18 +1,19 @@
 // Live vault panels shared by /dashboard and /try. Read-only by default; owner/approver actions appear
 // inline only when the connected wallet is allowed to take them.
 import {
-  ArrowUpRight, Bot, Check, CircleCheck, CircleX, Copy, ExternalLink, FolderClosed, FolderOpen, Hourglass, Inbox,
-  ListChecks, LockKeyhole, LockOpen, RotateCcw, type LucideIcon,
+  ArrowDownLeft, ArrowUpRight, Ban, Bot, Check, CircleCheck, CirclePause, CirclePlay, CircleX, Copy, ExternalLink, FolderClosed,
+  FolderOpen, Hourglass, Inbox, ListChecks, LockKeyhole, LockOpen, RotateCcw, ShieldCheck, Timer, UserCheck, UserX, type LucideIcon,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { Address, Hex } from "viem";
 import { vaultAbi } from "../../abi";
 import { addressUrl, chain, DEPLOYMENT, txUrl, ZERO_ADDRESS } from "../../lib/chain";
 import { decodeBytes32, formatAgo, formatAmount, formatCountdown, formatDateTime, shortAddr, shortHash } from "../../lib/format";
+import { blockCauseLabel, useCaseFromReason } from "../../lib/labels";
 import { useTx, type ContractCall } from "../../lib/tx";
 import type { FeedEvent, FeedEventName, VaultData } from "../../lib/useVault";
 import { useWallet } from "../../lib/wallet";
-import { Badge, Button, Card, EmptyState, IconBox, IconButton, KV, Sparkline, StatBox, type Tone } from "../ds";
+import { Badge, Button, Card, EmptyState, IconBox, IconButton, KV, StatBox, type Tone } from "../ds";
 import { ConfirmButton, TxStatusLine } from "../web3";
 
 // ---------------------------------------------------------------- context & helpers
@@ -161,17 +162,12 @@ export function VaultHero({ d, title }: { d: VaultData; title: string }) {
   );
 }
 
-const OUTFLOWS: FeedEventName[] = ["PaymentExecuted", "RequestApproved", "EscrowReleased"];
-
 export function SpendCard({ d }: { d: VaultData }) {
   const spent = sumActive(d, (a) => a.spentToday);
   const cap = sumActive(d, (a) => a.policy.dailyCap);
   const pct = cap === 0n ? 0 : Math.min(100, Number((spent * 10000n) / cap) / 100);
-  const recent = d.events
-    .filter((e) => OUTFLOWS.includes(e.name) && e.amount !== undefined)
-    .slice(0, 12)
-    .reverse(); // oldest first
-  const unit = 10 ** d.token.decimals;
+  const today = Math.floor(Number(d.chainTime) / 86400);
+  const blockedToday = d.events.filter((e) => e.name === "PaymentBlocked" && Math.floor(Number(e.timestamp) / 86400) === today).length;
   return (
     <Card tone="pink" className="spend-card">
       <div className="spend-card__top">
@@ -186,14 +182,12 @@ export function SpendCard({ d }: { d: VaultData }) {
       <div className="meter" role="img" aria-label={`${pct}% of daily cap used`}>
         <div className="meter__fill" style={{ width: `${pct}%` }} />
       </div>
-      {recent.length > 0 ? (
-        <>
-          <Sparkline values={recent.map((e) => Number(e.amount!) / unit)} label={`Last ${recent.length} payments out of the vault`} />
-          <div className="ds-label">Last {recent.length} payments out (paid, approved, released)</div>
-        </>
-      ) : (
-        <div className="ds-label spend-card__empty">No payments out yet.</div>
-      )}
+      <div className="spend-card__foot">
+        <Badge tone={blockedToday > 0 ? "blocked" : "neutral"}>
+          {blockedToday} blocked attempt{blockedToday === 1 ? "" : "s"} today
+        </Badge>
+        <span className="ds-label">Daily history: see Spend over time</span>
+      </div>
     </Card>
   );
 }
@@ -240,7 +234,7 @@ export function Agents({ ctx }: { ctx: VaultCtx }) {
           <Card
             key={a.address}
             title={<span className="ds-row"><IconBox bg="var(--c-mint)"><Bot size={20} /></IconBox>{decodeBytes32(a.policy.role)}</span>}
-            aside={a.policy.active ? <Badge tone="ok">Active</Badge> : <Badge tone="blocked">Revoked</Badge>}
+            aside={a.policy.active ? <Badge tone="ok">Active</Badge> : <Badge tone="blocked">{d.events.some((e) => e.name === "AgentRevoked" && e.agent === a.address) ? "Revoked" : "Inactive"}</Badge>}
           >
             <KV
               rows={[
@@ -309,11 +303,19 @@ export function Tasks({ ctx }: { ctx: VaultCtx }) {
         const usedPct = budget === 0n ? 0 : Math.min(100, Number((task.spent * 10000n) / budget) / 100);
         const status: [string, Tone] = !task.open ? ["Closed", "neutral"] : left <= 0 ? ["Expired", "neutral"] : ["Open", "ok"];
         const canClose = task.open && (ctx.isOwner || (!!ctx.account && left <= 0));
+        const agentRevoked = d.agents.some((a) => a.address === task.agent && !a.policy.active) ||
+          d.events.some((e) => e.name === "AgentRevoked" && e.agent === task.agent);
+        const closeMe = task.open && agentRevoked && !d.agents.some((a) => a.address === task.agent && a.policy.active);
         return (
-          <Card key={task.id} title={<span className="ds-row"><IconBox bg="var(--c-sky)"><ListChecks size={20} /></IconBox>Task {shortHash(task.id)}</span>} aside={<Badge tone={status[1]}>{status[0]}</Badge>}>
+          <Card key={task.id} title={<span className="ds-row"><IconBox bg="var(--c-sky)"><ListChecks size={20} /></IconBox>Task {shortHash(task.id)}</span>} aside={<span className="ds-row">{closeMe && <Badge tone="blocked">Close me</Badge>}<Badge tone={status[1]}>{status[0]}</Badge></span>}>
+            {closeMe && (
+              <p className="ds-note ds-note--pending close-me" data-testid="close-me">
+                This task's agent is revoked but its budget is still reserved. Close it to return the unspent budget to free balance.
+              </p>
+            )}
             <KV
               rows={[
-                ["Agent", <Addr a={task.agent} />],
+                ["Agent", <span>{<Addr a={task.agent} />}{agentRevoked && <> <Badge tone="blocked">Revoked</Badge></>}</span>],
                 ["Remaining", <span className="ds-data"><Amount raw={task.remaining} d={d} /></span>],
                 ["Spent", <Amount raw={task.spent} d={d} />],
                 ["Expires", formatDateTime(task.expiry)],
@@ -357,6 +359,7 @@ export function Queue({ ctx }: { ctx: VaultCtx }) {
         return (
           <Card key={r.id.toString()} className="item-card" title={<span className="ds-row"><IconBox bg="var(--c-pending)"><Hourglass size={20} /></IconBox>Request #{r.id.toString()}</span>} aside={expired ? <Badge>Expired</Badge> : <Badge tone="pending">Pending</Badge>}>
             <div className="item-card__amount"><Amount raw={r.amount} d={d} /></div>
+            <div className="item-card__label"><UseCaseChip reason={r.reason} /></div>
             <KV
               rows={[
                 ["To", <Addr a={r.recipient} />],
@@ -393,6 +396,7 @@ export function Escrows({ ctx }: { ctx: VaultCtx }) {
         return (
           <Card key={e.id.toString()} className="item-card" title={<span className="ds-row"><IconBox bg="var(--c-sky)">{e.status === 2 ? <LockOpen size={20} /> : <LockKeyhole size={20} />}</IconBox>Escrow #{e.id.toString()}</span>} aside={<Badge tone={tone}>{label}</Badge>}>
             <div className="item-card__amount"><Amount raw={e.amount} d={d} /></div>
+            <div className="item-card__label"><UseCaseChip reason={e.reason} /></div>
             <KV
               rows={[
                 ["Payee", <Addr a={e.payee} />],
@@ -417,22 +421,53 @@ export function Escrows({ ctx }: { ctx: VaultCtx }) {
 
 // ---------------------------------------------------------------- activity feed (stacked cards)
 
-const FEED: Record<FeedEventName, { title: string; icon: LucideIcon; bg: string; tone: Tone; sign: "-" | "+" | "" }> = {
-  PaymentExecuted: { title: "Paid", icon: ArrowUpRight, bg: "var(--c-ok)", tone: "ok", sign: "-" },
-  PaymentQueued: { title: "Queued for approval", icon: Hourglass, bg: "var(--c-pending)", tone: "pending", sign: "" },
-  RequestApproved: { title: "Request approved", icon: CircleCheck, bg: "var(--c-ok)", tone: "ok", sign: "-" },
-  RequestRejected: { title: "Request rejected", icon: CircleX, bg: "var(--c-blocked)", tone: "blocked", sign: "" },
-  EscrowCreated: { title: "Escrow locked", icon: LockKeyhole, bg: "var(--c-sky)", tone: "info", sign: "" },
-  EscrowReleased: { title: "Escrow released", icon: LockOpen, bg: "var(--c-ok)", tone: "ok", sign: "-" },
-  EscrowRefunded: { title: "Escrow refunded", icon: RotateCcw, bg: "var(--c-neutral)", tone: "neutral", sign: "+" },
-  TaskOpened: { title: "Task opened", icon: FolderOpen, bg: "var(--c-mint)", tone: "neutral", sign: "" },
-  TaskClosed: { title: "Task closed", icon: FolderClosed, bg: "var(--c-neutral)", tone: "neutral", sign: "" },
+type Group = "payments" | "escrow" | "tasks" | "config" | "funding";
+type FeedSpec = { title: string; icon: LucideIcon; bg: string; sign: "-" | "+" | ""; group: Group };
+
+const FEED: Record<FeedEventName, FeedSpec> = {
+  PaymentExecuted: { title: "Paid", icon: ArrowUpRight, bg: "var(--c-ok)", sign: "-", group: "payments" },
+  PaymentBlocked: { title: "Blocked", icon: Ban, bg: "var(--c-blocked)", sign: "", group: "payments" },
+  PaymentQueued: { title: "Queued for approval", icon: Hourglass, bg: "var(--c-pending)", sign: "", group: "payments" },
+  RequestApproved: { title: "Request approved", icon: CircleCheck, bg: "var(--c-ok)", sign: "-", group: "payments" },
+  RequestRejected: { title: "Request rejected", icon: CircleX, bg: "var(--c-blocked)", sign: "", group: "payments" },
+  EscrowCreated: { title: "Escrow locked", icon: LockKeyhole, bg: "var(--c-sky)", sign: "", group: "escrow" },
+  EscrowReleased: { title: "Escrow released", icon: LockOpen, bg: "var(--c-ok)", sign: "-", group: "escrow" },
+  EscrowRefunded: { title: "Escrow refunded", icon: RotateCcw, bg: "var(--c-neutral)", sign: "+", group: "escrow" },
+  TaskOpened: { title: "Task opened", icon: FolderOpen, bg: "var(--c-mint)", sign: "", group: "tasks" },
+  TaskClosed: { title: "Task closed", icon: FolderClosed, bg: "var(--c-neutral)", sign: "", group: "tasks" },
+  AgentSet: { title: "Agent policy set", icon: Bot, bg: "var(--c-mint)", sign: "", group: "config" },
+  AgentRevoked: { title: "Agent revoked", icon: UserX, bg: "var(--c-blocked)", sign: "", group: "config" },
+  AgentRecipientSet: { title: "Agent allowlist changed", icon: ListChecks, bg: "var(--c-sky)", sign: "", group: "config" },
+  GlobalRecipientSet: { title: "Vault-wide allowlist changed", icon: ListChecks, bg: "var(--c-sky)", sign: "", group: "config" },
+  AllowlistModeSet: { title: "Allowlist mode changed", icon: ShieldCheck, bg: "var(--c-sky)", sign: "", group: "config" },
+  ApproverSet: { title: "Escrow approver set", icon: UserCheck, bg: "var(--c-sky)", sign: "", group: "config" },
+  RequestTTLSet: { title: "Request TTL set", icon: Timer, bg: "var(--c-sky)", sign: "", group: "config" },
+  Paused: { title: "Vault paused", icon: CirclePause, bg: "var(--c-blocked)", sign: "", group: "config" },
+  Unpaused: { title: "Vault unpaused", icon: CirclePlay, bg: "var(--c-ok)", sign: "", group: "config" },
+  Deposited: { title: "Deposit", icon: ArrowDownLeft, bg: "var(--c-mustard)", sign: "+", group: "funding" },
+  Withdrawn: { title: "Withdrawal", icon: ArrowUpRight, bg: "var(--c-mustard)", sign: "-", group: "funding" },
 };
 
-function feedDetail(e: FeedEvent): string {
+const GROUPS: { id: Group | "all"; label: string }[] = [
+  { id: "all", label: "All" },
+  { id: "payments", label: "Payments" },
+  { id: "escrow", label: "Escrow" },
+  { id: "tasks", label: "Tasks" },
+  { id: "config", label: "Config" },
+  { id: "funding", label: "Funding" },
+];
+
+const SPENDS: FeedEventName[] = [
+  "PaymentExecuted", "PaymentBlocked", "PaymentQueued", "RequestApproved", "RequestRejected", "EscrowCreated", "EscrowReleased", "EscrowRefunded",
+];
+
+function feedDetail(e: FeedEvent, d: VaultData): string {
   const reason = e.reason ? decodeBytes32(e.reason) : null;
   const to = e.counterparty ? `to ${shortAddr(e.counterparty)}` : null;
+  const f = (v: bigint) => formatAmount(v, d.token.decimals);
   switch (e.name) {
+    case "PaymentBlocked":
+      return [reason, to, `over the ${blockCauseLabel(e.cause)}`, "no funds moved"].filter(Boolean).join(" · ");
     case "PaymentQueued":
       return [reason, to, `request #${e.refId}`, e.cause === 1 ? "above threshold" : "not allowlisted"].filter(Boolean).join(" · ");
     case "RequestApproved":
@@ -446,46 +481,96 @@ function feedDetail(e: FeedEvent): string {
       return `budget reserved for agent ${e.agent ? shortAddr(e.agent) : ""}`;
     case "TaskClosed":
       return "unspent budget returned to free balance";
+    case "AgentSet": {
+      const p = e.policy!;
+      return `${shortAddr(e.agent!)} · ${decodeBytes32(p.role)} · per-tx ${f(p.perTxCap)} · daily ${f(p.dailyCap)} · approval above ${f(p.approvalThreshold)}${p.active ? "" : " · inactive"}`;
+    }
+    case "AgentRevoked":
+      return `${shortAddr(e.agent!)} can no longer spend`;
+    case "AgentRecipientSet":
+      return `${e.allowed ? "allowed" : "removed"} ${shortAddr(e.counterparty!)} for agent ${shortAddr(e.agent!)}`;
+    case "GlobalRecipientSet":
+      return `${e.allowed ? "allowed" : "removed"} ${shortAddr(e.counterparty!)} for every agent`;
+    case "AllowlistModeSet":
+      return e.allowed ? "allowlist enforced" : "allowlist off: any recipient can be paid directly";
+    case "ApproverSet":
+      return e.counterparty === ZERO_ADDRESS ? "cleared: owner-only releases" : `approver ${shortAddr(e.counterparty!)}`;
+    case "RequestTTLSet":
+      return `queued requests now expire after ${formatCountdown(Number(e.ttl))}`;
+    case "Paused":
+    case "Unpaused":
+      return `by ${shortAddr(e.counterparty!)}`;
+    case "Deposited":
+      return `from ${shortAddr(e.counterparty!)}`;
+    case "Withdrawn":
+      return `to ${shortAddr(e.counterparty!)}`;
     default:
       return [reason, to].filter(Boolean).join(" · ");
   }
 }
 
+export function UseCaseChip({ reason }: { reason: Hex | undefined }) {
+  const u = useCaseFromReason(reason);
+  return <span className={`usecase-chip usecase-chip--${u.kind}`}>{u.label}</span>;
+}
+
 export function Activity({ d }: { d: VaultData }) {
   const now = useNow(5000);
   const t = chainNow(d, now);
+  const [filter, setFilter] = useState<Group | "all">("all");
+  const counts: Record<string, number> = {};
+  for (const g of GROUPS) counts[g.id] = g.id === "all" ? d.events.length : d.events.filter((e) => FEED[e.name].group === g.id).length;
+  const shown = filter === "all" ? d.events : d.events.filter((e) => FEED[e.name].group === filter);
   if (d.events.length === 0) return <EmptyState icon={<ListChecks size={20} />} title="No activity yet" />;
   return (
-    <ol className="feed" data-testid="activity-feed">
-      {d.events.map((e) => {
-        const f = FEED[e.name];
-        const Icon = f.icon;
-        return (
-          <li key={e.key} className="feed-item">
-            <IconBox bg={f.bg}>
-              <Icon size={20} />
-            </IconBox>
-            <div className="feed-item__body">
-              <div className="feed-item__title">{f.title}</div>
-              <div className="feed-item__detail">{feedDetail(e)}</div>
-            </div>
-            <div className="feed-item__side">
-              {e.amount !== undefined && (
-                <div className="feed-item__amount">
-                  {f.sign}
-                  <Amount raw={e.amount} d={d} />
+    <div className="ds-stack">
+      <div className="filter-chips" role="group" aria-label="Filter activity by type" data-testid="activity-filters">
+        {GROUPS.map((g) => (
+          <button key={g.id} type="button" className="filter-chip" aria-pressed={filter === g.id} onClick={() => setFilter(g.id)} data-testid={`filter-${g.id}`}>
+            {g.label} <span className="filter-chip__count">{counts[g.id]}</span>
+          </button>
+        ))}
+      </div>
+      {shown.length === 0 ? (
+        <EmptyState title="Nothing of this type yet" />
+      ) : (
+        <ol className="feed" data-testid="activity-feed">
+          {shown.map((e) => {
+            const f = FEED[e.name];
+            const Icon = f.icon;
+            const isBlocked = e.name === "PaymentBlocked";
+            return (
+              <li key={e.key} className={`feed-item ${isBlocked ? "feed-item--blocked" : ""}`} data-event={e.name}>
+                <IconBox bg={f.bg}>
+                  <Icon size={20} />
+                </IconBox>
+                <div className="feed-item__body">
+                  <div className="feed-item__title">
+                    {isBlocked ? <Badge tone="blocked">Blocked · {blockCauseLabel(e.cause)}</Badge> : f.title}
+                    {SPENDS.includes(e.name) && <UseCaseChip reason={e.reason} />}
+                  </div>
+                  <div className="feed-item__detail">{feedDetail(e, d)}</div>
                 </div>
-              )}
-              <div className="feed-item__time" title={formatDateTime(e.timestamp)}>
-                {formatAgo(t - Number(e.timestamp))} ·{" "}
-                <a href={txUrl(e.txHash as Hex)} target="_blank" rel="noreferrer" title={e.txHash}>
-                  tx {shortHash(e.txHash)}
-                </a>
-              </div>
-            </div>
-          </li>
-        );
-      })}
-    </ol>
+                <div className="feed-item__side">
+                  {e.amount !== undefined && (
+                    <div className={`feed-item__amount ${isBlocked ? "feed-item__amount--blocked" : ""}`}>
+                      {f.sign}
+                      <Amount raw={e.amount} d={d} />
+                      {isBlocked && <span className="feed-item__notpaid"> not paid</span>}
+                    </div>
+                  )}
+                  <div className="feed-item__time" title={formatDateTime(e.timestamp)}>
+                    {formatAgo(t - Number(e.timestamp))} ·{" "}
+                    <a href={txUrl(e.txHash as Hex)} target="_blank" rel="noreferrer" title={e.txHash}>
+                      tx {shortHash(e.txHash)}
+                    </a>
+                  </div>
+                </div>
+              </li>
+            );
+          })}
+        </ol>
+      )}
+    </div>
   );
 }

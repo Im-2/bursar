@@ -39,6 +39,28 @@ After connecting:
 - **Live updates:** account and network changes take effect immediately.
 - **Rejections:** a rejected request reads "Request rejected in your wallet."
 
+## Dashboard features
+
+- **Activity feed:** every vault event, in plain words. That covers payments (paid, **blocked** with its cause, queued, approved, rejected), escrow (locked, released, refunded), tasks (opened, closed), configuration (agent policy set, agent revoked, agent and vault-wide allowlist changes, allowlist mode, escrow approver, request TTL, paused, unpaused) and funding (deposits, withdrawals). Filter chips narrow it by group.
+- **Blocked attempts:** on v2 vaults, `pay()` logs a limit violation as `PaymentBlocked` (cause: per-tx cap, daily cap or task budget) instead of reverting. The feed shows these as red **Blocked** entries with the cause and "not paid". On Arbiscan they are successful transactions with the event in their logs.
+- **Paused banner** when the vault is paused. A revoked agent is marked **Revoked** (from its `AgentRevoked` event), and any task still open for it is flagged **Close me**, because its budget stays reserved until someone closes it.
+- **Spend over time:** stacked daily columns for the last 7 UTC days (paid by agent, approved by owner, escrow released), built only from the vault's events, against the agents' combined daily cap. It has a hover tooltip and a "Show table" view. The colors passed the dataviz palette validator for color-blind separation, and every bar is outlined because the amber is below 3:1 contrast.
+- **Roadmap card:** "Swaps and DeFi actions: coming soon". It's a visual preview only, with no functionality.
+- **History across deployments:** the dashboard finds a vault's creation block through `VaultCreated` on every known factory (v2 and the archived v1), so `?vault=` works for vaults from either deployment.
+
+### Use-case labels from reason codes
+
+Every payment and escrow carries a `bytes32` reason code chosen by the agent. The dashboard labels it by prefix:
+
+| Reason code prefix | Label |
+|---|---|
+| `DATA_*` or `API_*` | Bought data/service |
+| `SUBAGENT_*` | Hired a sub-agent |
+| `HUMAN_*` or `BOUNTY_*` | Paid a human |
+| anything else | Payment |
+
+The contract doesn't enforce this convention. It only gives agents a consistent way to make the audit trail readable, and any agent can follow it.
+
 ## Owner console (Stage B)
 
 Connect a wallet (see above).

@@ -1,11 +1,12 @@
 // /dashboard: live view of a vault (the demo vault by default, any vault via ?vault=0x…).
 // Panels are read-only for everyone; owner actions appear only for the connected owner.
-import { Search } from "lucide-react";
+import { ArrowLeftRight, CirclePause, Search } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { AppShell } from "../components/AppShell";
-import { Button, Card, SectionTitle, Skeleton } from "../components/ds";
+import { Badge, Button, Card, IconBox, SectionTitle, Skeleton } from "../components/ds";
 import { OwnerConsole } from "../components/vault/OwnerConsole";
+import { SpendChart } from "../components/vault/SpendChart";
 import { Activity, Addr, Agents, Escrows, Queue, Tasks, useVaultCtx, VaultOverview, type VaultCtx } from "../components/vault/panels";
 import { NetworkBanner, WalletButton } from "../components/web3";
 import { addressUrl, chain, DEPLOYMENT, parseAddress, POLL_MS } from "../lib/chain";
@@ -70,8 +71,22 @@ function Body({ d, refresh }: { d: VaultData; refresh: () => void }) {
   const ctx = useVaultCtx(d, refresh);
   return (
     <>
+      {d.paused && (
+        <div className="paused-banner" role="alert" data-testid="paused-banner">
+          <IconBox bg="var(--c-white)">
+            <CirclePause size={20} />
+          </IconBox>
+          <div>
+            <strong>This vault is paused.</strong> Agent payments, escrow locks, approvals and releases are frozen until the owner unpauses it.
+            Withdrawals, refunds after deadline and closing tasks still work.
+          </div>
+        </div>
+      )}
       <section id="overview" className="overview-anchor">
         <VaultOverview d={d} />
+      </section>
+      <section>
+        <SpendChart d={d} />
       </section>
       <section>
         <SectionTitle id="agents" title="Agents" sub="Policies enforced by the vault contract" />
@@ -92,6 +107,17 @@ function Body({ d, refresh }: { d: VaultData; refresh: () => void }) {
       <section>
         <SectionTitle id="activity" title="Activity" sub="Audit trail from the vault's event log" />
         <Activity d={d} />
+      </section>
+      <section>
+        <SectionTitle id="roadmap" title="Roadmap" sub="What's next for Bursar vaults" />
+        <div className="ds-grid">
+          <Card className="coming-soon" title={<span className="ds-row"><IconBox bg="var(--c-pink)"><ArrowLeftRight size={20} /></IconBox>Swaps and DeFi actions</span>} aside={<Badge tone="pending">Coming soon</Badge>}>
+            <p className="ds-muted">
+              Let agents swap or put idle funds to work under the same per-tx caps, daily caps, allowlists and approvals. Not built yet: this card is a
+              preview only and does nothing.
+            </p>
+          </Card>
+        </div>
       </section>
       <OwnerSection ctx={ctx} />
     </>

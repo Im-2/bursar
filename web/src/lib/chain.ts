@@ -3,6 +3,7 @@
 import { createPublicClient, fallback, getAddress, http, isAddress, type Address } from "viem";
 import { arbitrumSepolia } from "viem/chains";
 import deployment from "../../../deployments/arbitrum-sepolia.json";
+import deploymentV1 from "../../../deployments/arbitrum-sepolia.v1.json";
 
 export const RPC_URL: string = import.meta.env.VITE_RPC_URL || "https://sepolia-rollup.arbitrum.io/rpc";
 // Second public endpoint, used only when the primary fails (the official endpoint occasionally returns a
@@ -28,6 +29,12 @@ export const DEPLOYMENT = {
   factoryDeployBlock: BigInt(deployment.contracts.BursarFactory.block),
   demoAgent: getAddress(deployment.demo.agent.address),
 };
+
+/** Every Bursar factory deployed on this chain (newest first), used to find when any vault was created. */
+export const KNOWN_FACTORIES = [
+  { address: DEPLOYMENT.factory, block: DEPLOYMENT.factoryDeployBlock, version: 2 },
+  { address: getAddress(deploymentV1.contracts.BursarFactory.address), block: BigInt(deploymentV1.contracts.BursarFactory.block), version: 1 },
+];
 
 // batch.multicall folds every readContract issued in the same tick into one multicall3 request.
 export const client = createPublicClient({
