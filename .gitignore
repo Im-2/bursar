@@ -12,3 +12,7 @@ broadcast/**/dry-run/
 keystore*/
 keystores/
 node_modules/
+
+# third-party reference imagery: never commit
+design/reference/
+web/dist/

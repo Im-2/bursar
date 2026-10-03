@@ -1,0 +1,162 @@
+/* Dashboard-specific layout. Tokens and components come from styles/design-system.css. */
+
+.dash-header {
+  background: var(--c-black);
+  color: #fff;
+  border-bottom: var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+.dash-header__inner {
+  max-width: var(--page-max);
+  margin: 0 auto;
+  padding: var(--space-4) var(--gutter);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+.dash-header__brand {
+  color: var(--c-lime);
+  font-size: var(--fs-xl);
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  line-height: 1;
+}
+.dash-header__sub {
+  margin-top: var(--space-1);
+  color: #e8e8e8;
+  font-size: var(--fs-xs);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.dash-header__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+.dash-header .ds-badge {
+  border-color: #fff;
+}
+.dash-updated {
+  color: var(--c-lime);
+  font-size: var(--fs-xs);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.dash-updated--stale {
+  color: var(--c-amber);
+}
+
+.dash-main {
+  padding-top: var(--space-6);
+  padding-bottom: var(--space-7);
+}
+.dash-top {
+  margin-top: 0;
+}
+.dash-overview {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr));
+}
+.dash-balances {
+  display: grid;
+  gap: var(--space-5);
+}
+.dash-stack {
+  display: grid;
+  gap: var(--space-6);
+}
+.dash-loading {
+  margin-top: var(--space-6);
+}
+
+.dash-sub {
+  margin-top: var(--space-5);
+  margin-bottom: var(--space-2);
+}
+.dash-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: var(--space-2);
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+.dash-muted {
+  margin: 0;
+  color: var(--c-gray);
+  font-size: var(--fs-xs);
+}
+
+.amount {
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: help;
+}
+.amount__unit {
+  font-size: 0.8em;
+}
+.ds-stat__value .amount__unit {
+  color: var(--c-black);
+}
+.addr {
+  font-weight: 700;
+  white-space: nowrap;
+}
+.addr--full {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.ds-table__aside {
+  color: #e8e8e8;
+  font-size: var(--fs-xs);
+  font-weight: 500;
+  letter-spacing: 0.08em;
+}
+
+/* daily cap / budget meter: flat bar, black frame */
+.meter {
+  margin-top: var(--space-4);
+  height: 14px;
+  border: var(--border-thin);
+  background: var(--c-page);
+}
+.meter__fill {
+  height: 100%;
+  background: var(--c-blue);
+}
+.meter__label {
+  margin-top: var(--space-1);
+}
+
+.dash-footer {
+  border-top: var(--border);
+  background: var(--c-black);
+  color: #e8e8e8;
+  padding: var(--space-5) 0;
+  font-size: var(--fs-xs);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.dash-footer a {
+  color: var(--c-lime);
+}
+.dash-footer a:hover {
+  color: var(--c-black);
+}
+
+@media (max-width: 760px) {
+  .dash-header {
+    position: static;
+  }
+  .dash-header__brand {
+    font-size: var(--fs-lg);
+  }
+  .ds-section-bar {
+    margin-top: var(--space-6);
+  }
+}
