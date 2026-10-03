@@ -403,6 +403,7 @@ export default function Playground() {
       title="Playground"
       d={d}
       error={error}
+      loading={ready && !!my.selected && !d && !error}
       footer={<>Testnet sandbox · {chain.name} · mock token, no real funds · <Link to="/dashboard">demo vault dashboard</Link></>}
     >
       <div className="ds-stack">

@@ -4,6 +4,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { chain, POLL_MS } from "../lib/chain";
 import { formatAgo } from "../lib/format";
+import { useWallet } from "../lib/wallet";
 import type { VaultData } from "../lib/useVault";
 import { Badge, IconButton } from "./ds";
 import { useNow } from "./vault/panels";
@@ -62,7 +63,30 @@ function Sidebar({ open, onNavigate }: { open: boolean; onNavigate: () => void }
   );
 }
 
-function TopBar({ title, d, error, onMenu, menuOpen }: { title: string; d: VaultData | null; error: string | null; onMenu: () => void; menuOpen: boolean }) {
+/** Status shown when there is no vault data: either a vault is loading, or nothing is being loaded yet. */
+function IdleStatus({ loading }: { loading: boolean }) {
+  const w = useWallet();
+  if (loading) {
+    return (
+      <>
+        <Badge>Connecting</Badge>
+        <span className="dash-updated" aria-live="polite">Loading…</span>
+      </>
+    );
+  }
+  if (!w.account) return <Badge tone="neutral">Not connected</Badge>;
+  if (!w.onRightChain) return <Badge tone="blocked">Wrong network</Badge>;
+  return <Badge tone="ok">Connected</Badge>;
+}
+
+function TopBar({ title, d, error, loading, onMenu, menuOpen }: {
+  title: string;
+  d: VaultData | null;
+  error: string | null;
+  loading: boolean;
+  onMenu: () => void;
+  menuOpen: boolean;
+}) {
   const now = useNow();
   const age = d ? (now - d.fetchedAt) / 1000 : 0;
   const stale = !!d && age > (POLL_MS / 1000) * 3;
@@ -78,14 +102,16 @@ function TopBar({ title, d, error, onMenu, menuOpen }: { title: string; d: Vault
       </div>
       <div className="topbar__right">
         <Badge tone="info">{chain.name}</Badge>
-        {d ? d.paused ? <Badge tone="blocked">Paused</Badge> : <Badge tone="ok">Live</Badge> : <Badge>Connecting</Badge>}
-        <span className={`dash-updated ${stale || error ? "dash-updated--stale" : ""}`} aria-live="polite">
+        <span className="ds-row topbar__status" data-testid="topbar-status">
           {d ? (
             <>
-              Updated {formatAgo(age)} · block {d.blockNumber.toString()}
+              {d.paused ? <Badge tone="blocked">Paused</Badge> : <Badge tone="ok">Live</Badge>}
+              <span className={`dash-updated ${stale || error ? "dash-updated--stale" : ""}`} aria-live="polite">
+                Updated {formatAgo(age)} · block {d.blockNumber.toString()}
+              </span>
             </>
           ) : (
-            "Loading…"
+            <IdleStatus loading={loading} />
           )}
         </span>
         <WalletButton compact />
@@ -94,10 +120,12 @@ function TopBar({ title, d, error, onMenu, menuOpen }: { title: string; d: Vault
   );
 }
 
-export function AppShell({ title, d, error, children, footer }: {
+export function AppShell({ title, d, error, loading = false, children, footer }: {
   title: string;
   d: VaultData | null;
   error: string | null;
+  /** True only while a vault is actually being read (shows "Connecting / Loading…"). */
+  loading?: boolean;
   children: ReactNode;
   footer?: ReactNode;
 }) {
@@ -123,7 +151,7 @@ export function AppShell({ title, d, error, children, footer }: {
       <Sidebar open={open} onNavigate={() => setOpen(false)} />
       <div className="drawer-backdrop" data-open={open} onClick={() => setOpen(false)} aria-hidden="true" />
       <div className="app-main">
-        <TopBar title={title} d={d} error={error} onMenu={() => setOpen((o) => !o)} menuOpen={open} />
+        <TopBar title={title} d={d} error={error} loading={loading} onMenu={() => setOpen((o) => !o)} menuOpen={open} />
         <main className="app-content">{children}</main>
         {footer && <footer className="app-footer">{footer}</footer>}
       </div>

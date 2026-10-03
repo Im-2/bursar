@@ -159,6 +159,7 @@ export default function Dashboard() {
       title={vaultAddr === DEPLOYMENT.vault ? "Demo vault" : "Vault dashboard"}
       d={data}
       error={error}
+      loading={!!vaultAddr && !data && !error}
       footer={
         <>
           Every number is read from {chain.name} · refreshes every {POLL_MS / 1000}s · writes are signed in your own wallet ·{" "}
