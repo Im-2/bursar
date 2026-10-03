@@ -182,6 +182,28 @@ export async function launch({ account, startChainId = 1, width = 1440, height =
   const page = {
     wallet,
     evaluate,
+    /** Runs `action` (usually a click) and waits until the wallet has signed `count` new transactions and
+     *  each one is mined successfully. Returns the tx hashes. */
+    async signed(label, action, { count = 1, timeout = 120000 } = {}) {
+      const before = wallet.sent.length;
+      const failedBefore = await evaluate("document.querySelectorAll('[data-testid=tx-status][data-status=failed]').length");
+      await action();
+      const end = Date.now() + timeout;
+      while (wallet.sent.length < before + count) {
+        const failed = await evaluate("[...document.querySelectorAll('[data-testid=tx-status][data-status=failed]')].map((s) => s.textContent)");
+        if (failed.length > failedBefore) throw new Error(`${label}: UI reported failure: ${failed[failed.length - 1]}`);
+        if (Date.now() > end) throw new Error(`${label}: wallet only signed ${wallet.sent.length - before}/${count}`);
+        await sleep(300);
+      }
+      const hashes = wallet.sent.slice(before, before + count);
+      for (const hash of hashes) {
+        const r = await publicClient.waitForTransactionReceipt({ hash });
+        if (r.status !== "success") throw new Error(`${label}: ${hash} reverted`);
+      }
+      log(`  ✓ ${label}  ${hashes.join(", ")}`);
+      await sleep(2500); // let the page refresh from the chain
+      return hashes;
+    },
     /** Opens the connect modal and picks the test wallet (EIP-6963 entry). */
     async connect(rdns = TEST_WALLETS[0].rdns) {
       await this.click('[data-testid="connect-wallet"]');
@@ -203,9 +225,15 @@ export async function launch({ account, startChainId = 1, width = 1440, height =
       }
       throw new Error(`timed out waiting for: ${label}`);
     },
+    /** Clicks an element, waiting (up to 60s) for it to exist and be enabled, like a person would. */
     async click(selector) {
-      const ok = await evaluate(`(() => { const el = document.querySelector(${JSON.stringify(selector)}); if (!el) return false; el.scrollIntoView({block:'center'}); el.click(); return true; })()`);
-      if (!ok) throw new Error(`no element ${selector}`);
+      const end = Date.now() + 60000;
+      for (;;) {
+        const r = await evaluate(`(() => { const el = document.querySelector(${JSON.stringify(selector)}); if (!el) return 'missing'; if (el.disabled) return 'disabled'; el.scrollIntoView({block:'center'}); el.click(); return 'ok'; })()`);
+        if (r === "ok") return;
+        if (Date.now() > end) throw new Error(`cannot click ${selector}: ${r}`);
+        await sleep(300);
+      }
     },
     /** Sets a React-controlled input/select value. */
     async fill(selector, value) {

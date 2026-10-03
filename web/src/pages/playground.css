@@ -1,0 +1,162 @@
+/* /try playground layout. Tokens and components come from styles/design-system.css. */
+
+.pg-sandbox {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  border: var(--border);
+  background: var(--c-card);
+  padding: var(--space-3) var(--space-4);
+  margin-bottom: var(--space-4);
+}
+.pg-sandbox__text {
+  font-size: var(--fs-sm);
+  flex: 1 1 320px;
+}
+.pg-steps {
+  display: grid;
+  gap: var(--space-5);
+}
+.pg-step {
+  border: var(--border);
+  background: var(--c-card);
+}
+.pg-step--locked {
+  background: var(--c-page);
+  border-style: dashed;
+}
+.pg-step__head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+  border-bottom: var(--border);
+  background: var(--c-black);
+  color: var(--c-lime);
+}
+.pg-step--locked .pg-step__head {
+  border-bottom: 0;
+  background: transparent;
+  color: var(--c-gray);
+}
+.pg-step__num {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border: 2px solid currentColor;
+  font-weight: 800;
+  font-size: var(--fs-lg);
+}
+.pg-step__title {
+  margin: 0;
+  flex: 1;
+  font-size: var(--fs-lg);
+  font-weight: 800;
+  text-transform: uppercase;
+}
+.pg-step__body {
+  padding: var(--space-5);
+}
+.pg-links {
+  margin: var(--space-2) 0 0;
+  padding-left: var(--space-5);
+}
+.pg-vault-line {
+  margin: 0;
+  font-size: var(--fs-sm);
+}
+.pg-setup {
+  display: grid;
+  gap: var(--space-4);
+}
+.pg-substep {
+  border: var(--border-thin);
+  padding: var(--space-4);
+}
+.pg-substep__head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--space-2);
+  align-items: center;
+}
+.pg-split {
+  display: grid;
+  gap: var(--space-5);
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+}
+@media (min-width: 1100px) {
+  .pg-split {
+    grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+  }
+  .pg-state {
+    position: sticky;
+    top: 100px;
+  }
+}
+.scenarios {
+  display: grid;
+  gap: var(--space-4);
+}
+.pg-state {
+  display: grid;
+  gap: var(--space-4);
+}
+.pg-state__grid {
+  display: grid;
+  gap: var(--space-3);
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+}
+.pg-big {
+  color: var(--c-blue);
+  font-size: var(--fs-lg);
+  font-weight: 800;
+}
+.scenario__letter {
+  display: inline-grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  background: var(--c-black);
+  color: var(--c-lime);
+  margin-right: var(--space-2);
+}
+.scenario__what {
+  margin: 0 0 var(--space-3);
+  font-size: var(--fs-sm);
+}
+.scenario__call {
+  display: grid;
+  gap: var(--space-1);
+  background: var(--c-page);
+  border: var(--border-thin);
+  padding: var(--space-2) var(--space-3);
+  margin-bottom: var(--space-3);
+  overflow-wrap: anywhere;
+}
+.scenario__call code {
+  font-size: var(--fs-xs);
+  font-weight: 700;
+}
+.scenario__result {
+  margin-top: var(--space-3);
+  border-top: 3px solid var(--c-black);
+  padding-top: var(--space-3);
+  font-size: var(--fs-sm);
+  display: grid;
+  gap: var(--space-2);
+}
+.scenario__result p {
+  margin: 0;
+}
+@media (max-width: 760px) {
+  .pg-step__body {
+    padding: var(--space-4);
+  }
+  .pg-step__head {
+    padding: var(--space-3) var(--space-4);
+  }
+}

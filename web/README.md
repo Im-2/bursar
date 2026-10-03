@@ -6,6 +6,7 @@ Vite + React + TypeScript + [viem](https://viem.sh), with plain custom CSS. Ever
 |---|---|
 | `/dashboard` | The demo vault: live state for everyone, plus the **owner console** when the connected wallet owns the vault |
 | `/dashboard?vault=0x…` | The same view for any Bursar vault on Arbitrum Sepolia |
+| `/try` | **Playground:** create your own vault and run agent scenarios against it (testnet sandbox, mock token) |
 | `/` | Reserved for the landing page; currently redirects to `/dashboard` |
 
 ![Dashboard, desktop](../docs/screenshots/dashboard-desktop.png)
@@ -22,9 +23,25 @@ npm run preview    # serve the production build
 
 On Windows PowerShell, use `npm.cmd` if `npm` is blocked by the script execution policy.
 
+## Wallet connection
+
+[wagmi](https://wagmi.sh) on top of viem, with our own connect modal built from the design system (no third-party modal UI):
+
+- **Browser wallets:** every wallet found through EIP-6963 (MetaMask, Rabby, Coinbase Wallet, Brave…) gets its own entry with its own name and icon. A generic "browser wallet" entry appears only for a plain `window.ethereum` that doesn't announce itself.
+- **WalletConnect:** for mobile and non-installed wallets. The QR code renders in our modal. Needs `VITE_WALLETCONNECT_PROJECT_ID`; without it the option is hidden and the console logs a warning.
+- **Coinbase Wallet:** the extension or a smart wallet.
+- **No wallet installed:** the modal shows install links for MetaMask and Rabby.
+
+After connecting:
+- **Network:** the app asks to switch to Arbitrum Sepolia (chain 421614); wagmi adds the network if the wallet doesn't know it. A banner stays up while the wallet is on another network.
+- **Header:** the short address, the ETH balance, and **Disconnect**, which closes every connection.
+- **Persistence:** the last-used wallet reconnects on reload. Its storage is wrapped so it never throws.
+- **Live updates:** account and network changes take effect immediately.
+- **Rejections:** a rejected request reads "Request rejected in your wallet."
+
 ## Owner console (Stage B)
 
-Connect a browser wallet. The app asks it to switch to Arbitrum Sepolia (chain 421614), and to add the network first if the wallet doesn't know it.
+Connect a wallet (see above).
 
 - **Owner:** actions appear inline and in the owner console.
   - **Approval queue:** approve or reject pending requests.
@@ -43,6 +60,22 @@ Every action follows the same steps:
 
 Destructive actions (pause, revoke, close task) ask for a second click to confirm.
 
+## Playground (Stage C, `/try`)
+
+A **testnet sandbox with a mock token and no real funds**, where a visitor drives their own vault with their own wallet. The deployer's demo vault is never touched from here.
+
+1. **Connect:** connect and switch network. The page shows your ETH balance, with faucet links if it's below 0.0005 ETH.
+2. **Create and fund:** create your own vault through `BursarFactory.createVault(MockUSDG)`, mint mock USDG to yourself, then approve and deposit. Your vaults are listed from the factory (`vaultsOf`), and the last one you used is remembered in localStorage, so you can come back to it.
+3. **Become an agent:** register your own address as an agent, with an editable policy (default 100 / 500 / 50). Allowlist a recipient (a random address with no known key, by default), and open a task.
+4. **Scenarios:** each card pre-fills an agent action, explains what it shows, runs it, and decodes the result from the transaction's events:
+   - **A. Buy data:** a direct payment within every limit.
+   - **B. Hire a sub-agent:** an escrow to another address, then released by you as owner.
+   - **C. Pay a human bounty:** an escrow to a person (editable address), released when you approve the work.
+   - **D. Over-limit attempt:** above the per-tx cap. Simulated first and shown as blocked with `ExceedsPerTxCap()`; nothing is signed or sent.
+   - **E. Needs approval:** above the threshold, or to a non-allowlisted address. It lands in the approval queue, and you approve or reject it.
+
+Your vault's live state (balances, policy, task budget, queue, escrows, activity) sits next to the scenarios. Scenario amounts are derived from your current policy.
+
 ## Configuration
 
 Copy `.env.example` to `.env.local`. Only `VITE_`-prefixed variables reach the browser, and everything in them is bundled into public JavaScript, so **never put a key or secret here**. This app doesn't need one.
@@ -52,6 +85,7 @@ Copy `.env.example` to `.env.local`. Only `VITE_`-prefixed variables reach the b
 | `VITE_RPC_URL` | `https://sepolia-rollup.arbitrum.io/rpc` | Primary JSON-RPC endpoint |
 | `VITE_RPC_FALLBACK_URL` | `https://arbitrum-sepolia-rpc.publicnode.com` | Used only when a primary request fails; set to empty to disable |
 | `VITE_POLL_MS` | `6000` | Refresh interval |
+| `VITE_WALLETCONNECT_PROJECT_ID` | (none) | Enables WalletConnect; put it in `web/.env` (git-ignored) |
 
 The fallback exists because the official public endpoint occasionally returns a malformed CORS header (`Access-Control-Allow-Origin: *,*`) to browsers. Those requests fail in the browser even though they work from `curl`. With the fallback, a failed request is retried on the second endpoint, so the page keeps updating. The browser console still logs the rejected responses.
 
@@ -103,6 +137,10 @@ Amounts are shown in human units (6 decimals) with thousands separators. Hover a
 npm run dev    # in one terminal
 BURSAR_TEST_WALLET_FILE=/path/outside/repo/wallet.json node scripts/e2e/stage-b.mjs
 ```
+
+- **The test wallet:** the shim announces itself through EIP-6963, the same way a real extension does. `wallet-modal.mjs` announces two test wallets to check the modal lists both.
+- **`wallet-modal.mjs`:** the modal listing, a rejected request, connecting with the network switch and balance, reconnecting after reload, and disconnecting. Saves `docs/screenshots/wallet-modal-*.png`.
+- **`stage-c.mjs`:** the whole playground through the UI. It creates a vault, mints, approves and deposits, sets up the agent, allowlist and task, then runs scenarios A–E (including a blocked attempt, one approval and one rejection) and checks the vault is remembered after a reload. Saves `docs/screenshots/playground-*.png`.
 
 `stage-b.mjs` first seeds a fresh vault owned by the test wallet, with funds, an agent, a task, two queued requests and two escrows. It then uses only the UI to run every owner action: approve, reject, release, a decoded-error attempt, open and close a task, update the policy, allowlist, enforce-allowlist toggle, approver, TTL, pause and unpause, refund, and revoke. It saves screenshots to `docs/screenshots/stage-b-*.png`.
 
