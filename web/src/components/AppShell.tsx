@@ -27,7 +27,7 @@ function Sidebar({ open, onNavigate }: { open: boolean; onNavigate: () => void }
   const activeHash = loc.hash.replace("#", "") || "overview";
   return (
     <nav className="sidebar" data-open={open} aria-label="Main" id="app-sidebar">
-      <Link to="/dashboard" className="sidebar__brand" onClick={onNavigate}>
+      <Link to="/" className="sidebar__brand" onClick={onNavigate} aria-label="Bursar home">
         <span className="sidebar__logo" aria-hidden="true">
           <Vault size={20} strokeWidth={2.5} />
         </span>
@@ -98,6 +98,12 @@ function TopBar({ title, d, error, loading, onMenu, menuOpen }: {
             {menuOpen ? <X size={18} /> : <Menu size={18} />}
           </IconButton>
         </span>
+        {/* On phones the sidebar (and its logo) is a drawer, so the top bar carries a home link too. */}
+        <Link to="/" className="brand topbar__brand" aria-label="Bursar home">
+          <span className="brand__logo" aria-hidden="true">
+            <Vault size={18} strokeWidth={2.5} />
+          </span>
+        </Link>
         <span className="topbar__title">{title}</span>
       </div>
       <div className="topbar__right">

@@ -4,7 +4,7 @@ import Landing from "./landing/Landing";
 import Dashboard from "./pages/Dashboard";
 import Playground from "./pages/Playground";
 
-// "/" is the landing page; unknown paths forward to the dashboard.
+// "/" is the landing page; unknown paths forward to it.
 export default function App() {
   return (
     <>
@@ -12,7 +12,7 @@ export default function App() {
         <Route path="/" element={<Landing />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/try" element={<Playground />} />
-        <Route path="*" element={<Navigate to="/dashboard" replace />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       <WalletModal />
     </>
