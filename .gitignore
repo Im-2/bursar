@@ -11,7 +11,11 @@ broadcast/**/dry-run/
 .password
 keystore*/
 keystores/
+keystore*
+*.keystore
+UTC--*
 node_modules/
+.vercel/
 
 # third-party reference imagery: never commit
 design/reference/
